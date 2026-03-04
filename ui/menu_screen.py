@@ -21,7 +21,9 @@ class MenuScreen(BaseScreen):
         self._highlight_pair = highlight_pair
         if curses.has_colors():
             try:
-                curses.init_pair(highlight_pair, curses.COLOR_BLACK, curses.COLOR_WHITE)
+                curses.use_default_colors()
+                curses.init_pair(highlight_pair, curses.COLOR_WHITE, curses.COLOR_BLUE)
+                curses.init_pair(highlight_pair + 1, curses.COLOR_CYAN, -1)
             except Exception:
                 pass
 
