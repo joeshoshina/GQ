@@ -21,10 +21,3 @@ class ScreenRegistry:
 
     def all(self) -> Dict[str, ScreenFactory]:
         return dict(self._factories)
-
-    def decorator(self, screen_id: str):
-        def _wrap(factory: ScreenFactory) -> ScreenFactory:
-            self.register(screen_id, factory)
-            return factory
-
-        return _wrap

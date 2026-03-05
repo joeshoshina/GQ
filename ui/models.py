@@ -27,3 +27,11 @@ class MenuState(ScreenState):
     options: Sequence[MenuOption] = field(default_factory=tuple)
     selected_index: int = 0
     help_text: str = "Use Arrows to navigate — Enter to select"
+
+@dataclass
+class RegistrationState(ScreenState):
+    fields: Sequence[str] = field(default_factory=lambda: ["username", "password", "confirm_password"])
+    values: dict = field(default_factory=dict)
+    active_field: int = 0
+    error: Optional[str] = None
+    help_text: str = "Tab/Arrows to move — Enter to submit — Esc to go back"

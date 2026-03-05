@@ -60,8 +60,6 @@ class MenuScreen(BaseScreen):
         try:
             curses.start_color()
             curses.use_default_colors()
-            curses.init_pair(self._highlight_pair, curses.COLOR_WHITE, curses.COLOR_BLUE)
-            curses.init_pair(self._highlight_pair + 1, curses.COLOR_CYAN, -1)
         except Exception:
             pass
 
@@ -85,15 +83,13 @@ class MenuScreen(BaseScreen):
             except curses.error:
                 pass
 
-    # ── render ───────────────────────────────────────────────────────
-
     def render(self) -> None:
         self.stdscr.erase()
         max_y, _ = self.stdscr.getmaxyx()
         top_y = max(1, max_y // 6)
 
         if self._title:
-            attr = curses.A_BOLD | self._color_pair(self._highlight_pair + 1)
+            attr = curses.A_BOLD
             self._draw_centered(top_y, self._title, attr)
 
         if self._subtitle:
@@ -109,7 +105,7 @@ class MenuScreen(BaseScreen):
         for i, opt in enumerate(options):
             y = menu_top + i * 2
             if i == self._idx and opt.enabled:
-                attr = self._color_pair(self._highlight_pair) | curses.A_BOLD
+                attr = curses.A_REVERSE | curses.A_BOLD
                 self._draw_centered(y, opt.label, attr)
             else:
                 attr = curses.A_DIM if not opt.enabled else curses.A_NORMAL
@@ -123,13 +119,9 @@ class MenuScreen(BaseScreen):
             return None
         if key == curses.KEY_UP:
             self._idx = (self._idx - 1) % len(self._options)
-            if self._emit_events:
-                return ScreenEvent(name="menu.move", payload={"delta": -1})
             return None
         if key == curses.KEY_DOWN:
             self._idx = (self._idx + 1) % len(self._options)
-            if self._emit_events:
-                return ScreenEvent(name="menu.move", payload={"delta": 1})
             return None
         if key in (curses.KEY_ENTER, ord("\n"), ord("\r")):
             selected = self._options[self._idx]
