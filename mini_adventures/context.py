@@ -14,8 +14,8 @@ class AdventureContext:
     def move_player(self, player, direction):
         return self.movement.move(self, player, direction)
 
-    def check_win(self):
-        return self.win_condition.check(self)
+    def check_winner(self):
+        return self.win_condition.check_winner(self)
 
     def advance_time(self):
         if self.time_strategy:

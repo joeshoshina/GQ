@@ -20,3 +20,11 @@ class WinConditionStrategy(ABC):
     @abstractmethod
     def check_winner(self, context):
         pass
+
+class RelicCountWin(WinConditionStrategy):
+
+    def check_winner(self, context) -> str | None:
+        for p in context.players:
+            if p["relics"] >= context.relics_needed:
+                return f"{p['name']} wins by collecting {p['relics']} relics!"
+        return None

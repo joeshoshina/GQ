@@ -14,5 +14,13 @@ class TimeStrategy(ABC):
     """
 
     @abstractmethod
-    def update_time(self, context):
+    def advance_time(self, context):
         pass
+
+class TurnBasedTime(TimeStrategy):
+
+    def __init__(self, minutes_per_turn: int = 10):
+        self.minutes_per_turn = minutes_per_turn
+
+    def advance_time(self, context) -> None:
+        context.world_time = context.world_time.add(self.minutes_per_turn)

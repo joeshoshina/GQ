@@ -99,6 +99,9 @@ class Inventory:
                 return entry
         return None
     
+    def clear(self):
+        self.entries = []
+    
     def __str__(self):
         if not self.entries:
             return "Empty inventory"
