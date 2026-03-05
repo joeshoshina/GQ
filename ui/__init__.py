@@ -1,6 +1,7 @@
 import importlib
 import sys
 import curses
+import queue
 from typing import Callable, Dict, Generator, Optional
 
 from .models import (
@@ -31,6 +32,7 @@ class ScreenManager:
     def __init__(self, registry: Optional[ScreenRegistry] = None) -> None:
         self._registry = registry or self._default_registry()
         self._screen_cache: Dict[str, BaseScreen] = {}
+        self._external_queue = queue.Queue()
 
     def _default_registry(self) -> ScreenRegistry:
         registry = ScreenRegistry()
@@ -66,6 +68,9 @@ class ScreenManager:
 
     def register(self, screen_id: str, factory: Callable[["curses.window"], BaseScreen]) -> None:
         self._registry.register(screen_id, factory)
+
+    def push_event(self, event):
+        self._external_queue.put(event)
 
     def run(self, state_stream: Generator[ScreenState, ScreenEvent, None]) -> None:
         curses.wrapper(lambda stdscr: self._main(stdscr, state_stream))
@@ -110,6 +115,18 @@ class ScreenManager:
                         stdscr.refresh()
                     except Exception:
                         pass
+
+                try:
+                    ext_event = self._external_queue.get_nowait()
+                except Exception:
+                    ext_event = None
+
+                if ext_event is not None:
+                    try:
+                        state = state_stream.send(ext_event)
+                    except StopIteration:
+                        return
+                    break
 
                 try:
                     key = stdscr.getch()
