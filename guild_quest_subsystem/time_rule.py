@@ -4,7 +4,10 @@ Supports conversions toLocal(world) and toWorld(local) so the rule can evolve
 without changing event storage.
 """
 
-from world_time import WorldTime
+try:
+    from .world_time import WorldTime
+except ImportError:
+    from world_time import WorldTime
 
 
 class TimeRule:

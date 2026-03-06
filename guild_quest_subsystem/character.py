@@ -1,9 +1,12 @@
 """
 Character and LootTransaction classes
 """
-
-from inventory import Inventory
-from enums import LootType
+try:
+    from .inventory import Inventory
+    from .enums import LootType
+except ImportError:
+    from inventory import Inventory
+    from enums import LootType
 
 
 class Character:
