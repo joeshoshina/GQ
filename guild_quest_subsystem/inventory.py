@@ -1,5 +1,12 @@
 """
-Item and Inventory system classes
+Player Inventory Management - Item Tracking and Transactions.
+
+Manages player inventory state including gold, relics, and other collectibles.
+
+Key components:
+- Inventory: Stores item counts (gold, relics) and provides transaction support
+- LootTransaction: Encapsulates inventory updates with optional logging
+- clear(): Resets inventory to empty state (used on adventure reset)
 """
 
 
@@ -92,15 +99,15 @@ class Inventory:
     
     def list_entries(self):
         return list(self.entries)
+
+    def clear(self):
+        self.entries.clear()
     
     def _find_entry(self, item):
         for entry in self.entries:
             if entry.get_item() == item:
                 return entry
         return None
-    
-    def clear(self):
-        self.entries = []
     
     def __str__(self):
         if not self.entries:
