@@ -1,7 +1,17 @@
 import importlib
 import sys
 import curses
-from typing import Callable, Dict, Optional
+import queue
+from typing import Callable, Dict, Generator, Optional
+
+from .models import (
+    MenuOption,
+    MenuState,
+    RegistrationState,
+    ScreenEvent,
+    ScreenState,
+)
+from .registry import ScreenRegistry
 
 _base_mod = importlib.import_module(".base_screen", __package__)
 sys.modules.setdefault("base_screen", _base_mod)
@@ -9,84 +19,130 @@ _menu_mod = importlib.import_module(".menu_screen", __package__)
 sys.modules.setdefault("menu_screen", _menu_mod)
 _title_mod = importlib.import_module(".title_screen", __package__)
 sys.modules.setdefault("title_screen", _title_mod)
+_reg_mod = importlib.import_module(".registration_screen", __package__)
+sys.modules.setdefault("registration_screen", _reg_mod)
 
 BaseScreen = _base_mod.BaseScreen
 MenuScreen = _menu_mod.MenuScreen
 TitleScreen = _title_mod.TitleScreen
+RegistrationScreen = _reg_mod.RegistrationScreen
+
 
 class ScreenManager:
-    def __init__(
-        self,
-        screens: Optional[Dict[str, Callable[["curses.window"], BaseScreen]]] = None,
-        initial: str = "title",
-    ) -> None:
-        self._screens = screens or self._default_screens()
-        self._initial = initial
+    def __init__(self, registry: Optional[ScreenRegistry] = None) -> None:
+        self._registry = registry or self._default_registry()
+        self._screen_cache: Dict[str, BaseScreen] = {}
+        self._external_queue = queue.Queue()
 
-    def _default_screens(self) -> Dict[str, Callable[["curses.window"], BaseScreen]]:
-        return {
-            "title": lambda stdscr: TitleScreen(stdscr),
-            "Login": lambda stdscr: MenuScreen(
+    def _default_registry(self) -> ScreenRegistry:
+        registry = ScreenRegistry()
+        registry.register("title", lambda stdscr: TitleScreen(stdscr, emit_events=True))
+        registry.register(
+            "Login",
+            lambda stdscr: MenuScreen(
                 stdscr,
-                options=("Back",),
-                title="Login",
-                subtitle="Not implemented",
+                emit_events=True,
+                menu_state=MenuState(
+                    screen_id="Login",
+                    title="Login",
+                    subtitle="Not implemented",
+                    options=[MenuOption(id="Back", label="Back")],
+                ),
             ),
-            "Register": lambda stdscr: MenuScreen(
+        )
+        registry.register("Register", lambda stdscr: RegistrationScreen(stdscr))
+        registry.register(
+            "Settings",
+            lambda stdscr: MenuScreen(
                 stdscr,
-                options=("Back",),
-                title="Register",
-                subtitle="Not implemented",
+                emit_events=True,
+                menu_state=MenuState(
+                    screen_id="Settings",
+                    title="Settings",
+                    subtitle="Not implemented",
+                    options=[MenuOption(id="Back", label="Back")],
+                ),
             ),
-            "Settings": lambda stdscr: MenuScreen(
-                stdscr,
-                options=("Back",),
-                title="Settings",
-                subtitle="Not implemented",
-            ),
-        }
+        )
+        return registry
 
-    def run(self) -> None:
-        import curses
+    def register(self, screen_id: str, factory: Callable[["curses.window"], BaseScreen]) -> None:
+        self._registry.register(screen_id, factory)
 
+    def push_event(self, event):
+        self._external_queue.put(event)
+
+    def run(self, state_stream: Generator[ScreenState, ScreenEvent, None]) -> None:
+        curses.wrapper(lambda stdscr: self._main(stdscr, state_stream))
+
+    def _get_screen(self, stdscr: "curses.window", screen_id: str) -> Optional[BaseScreen]:
+        screen = self._screen_cache.get(screen_id)
+        if screen is not None:
+            return screen
+        factory = self._registry.get(screen_id)
+        if factory is None:
+            return None
+        screen = factory(stdscr)
+        self._screen_cache[screen_id] = screen
+        return screen
+
+    def _main(self, stdscr: "curses.window", state_stream: Generator[ScreenState, ScreenEvent, None]) -> None:
         try:
-            curses.wrapper(self._main)
+            curses.start_color()
+            curses.use_default_colors()
+            stdscr.bkgd(' ', curses.color_pair(0))
         except Exception:
             pass
-
-    def _main(self, stdscr: "curses.window") -> None:
-        stack: list[BaseScreen] = []
-        factory = self._screens.get(self._initial)
-        if factory is None:
+        try:
+            state = next(state_stream)
+        except StopIteration: # nothing to render
             return
-        stack.append(factory(stdscr))
 
-        while stack:
-            current = stack[-1]
+        while True:
+            screen = self._get_screen(stdscr, state.screen_id)
+            if screen is None:
+                break
             try:
-                result = current.run()
+                screen.set_state(state)
             except Exception:
-                result = None
+                pass
 
-            if result is None:
-                break
+            while True:
+                try:
+                    screen.render()
+                except Exception:
+                    try:
+                        stdscr.refresh()
+                    except Exception:
+                        pass
 
-            cmd = str(result)
+                try:
+                    ext_event = self._external_queue.get_nowait()
+                except Exception:
+                    ext_event = None
 
-            if cmd in ("Back", "back"):
-                stack.pop()
-                if not stack:
+                if ext_event is not None:
+                    try:
+                        state = state_stream.send(ext_event)
+                    except StopIteration:
+                        return
                     break
-                continue
 
-            if cmd.lower() in ("quit", "exit"):
+                try:
+                    key = stdscr.getch()
+                except Exception:
+                    return
+
+                try:
+                    event = screen.handle_key(key)
+                except Exception:
+                    event = None
+
+                if event is None:
+                    continue
+
+                try:
+                    state = state_stream.send(event)
+                except StopIteration:
+                    return
                 break
-
-            factory = self._screens.get(cmd)
-            if factory:
-                stack.append(factory(stdscr))
-                continue
-
-            break
-
-__all__ = ["ScreenManager", "BaseScreen", "MenuScreen", "TitleScreen"]
