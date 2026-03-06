@@ -1,9 +1,23 @@
+"""
+Relic Hunt Mini-Adventure - Competitive Relic Collection Gameplay.
+
+Two players race on a grid-based realm to collect 3 magical relics and win.
+
+Key components:
+- RelicRaceAdventure: Concrete BaseAdventure implementation with relic collection mechanics
+- Strategies injected via AdventureContext:
+  - GridMovement: Handles movement with boundary and collision detection
+  - RelicCountWin: Checks if player has collected 3+ relics
+  - TurnBasedTime: Advances world time each turn (15 minutes per turn)
+- Grid rendering: Walls (#), empty tiles (.), relics (*), players (1/2)
+"""
+
 import random
-from base_adventure import BaseAdventure
-from context import AdventureContext
-from strategies.movement import GridMovement
-from strategies.win_condition import RelicCountWin
-from strategies.time_strategy import TurnBasedTime
+from .base_adventure import BaseAdventure
+from .context import AdventureContext
+from .strategies.movement import GridMovement
+from .strategies.win_condition import RelicCountWin
+from .strategies.time_strategy import TurnBasedTime
 from guild_quest_subsystem.inventory import Item
 from guild_quest_subsystem.enums import LootType
 from guild_quest_subsystem.character import LootTransaction
@@ -80,7 +94,13 @@ class RelicRaceAdventure(BaseAdventure):
             return
         ctx = self._ctx
 
-        if command in self.KEY_MAP:
+        direction_commands = {"up", "down", "left", "right"}
+
+        if command in direction_commands:
+            direction = command
+            if player_index not in (0, 1):
+                return
+        elif command in self.KEY_MAP:
             player_index, direction = self.KEY_MAP[command]
         else:
             direction = command
