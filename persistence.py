@@ -22,6 +22,9 @@ class UserAlreadyExists(PersistenceError):
 class UserNotFound(PersistenceError):
     pass
 
+class InsecureRecordError(PersistenceError):
+    pass
+
 
 class UserRepository:
     def __init__(self, path: str = "users.json") -> None:
@@ -72,11 +75,14 @@ class UserRepository:
                 pass
 
     @staticmethod
-    def _hash_password(password: Password) -> str:
-        if not isinstance(password, Password):
-            raise TypeError("password must be a Password instance")
+    def _generate_salt(length: int = 16) -> bytes:
+        return os.urandom(length)
+
+    @staticmethod
+    def _hash_password(password: Password, salt: bytes) -> str:
         raw = password.value.encode("utf-8")
-        return hashlib.sha256(raw).hexdigest()
+        dk = hashlib.pbkdf2_hmac("sha256", raw, bytes(salt), 100_000)
+        return dk.hex()
 
     def list_usernames(self) -> List[str]:
         users = self._read_all()
@@ -100,9 +106,12 @@ class UserRepository:
             for u in users:
                 if u.get("username") == username.value:
                     raise UserAlreadyExists(username.value)
+            salt = self._generate_salt()
+            password_hash = self._hash_password(password, salt)
             record = {
                 "username": username.value,
-                "password_hash": self._hash_password(password),
+                "password_hash": password_hash,
+                "salt": salt.hex(),
                 "score": 0,
             }
             users.append(record)
@@ -117,7 +126,9 @@ class UserRepository:
             users = self._read_all()
             for u in users:
                 if u.get("username") == username.value:
-                    u["password_hash"] = self._hash_password(new_password)
+                    salt = self._generate_salt()
+                    u["password_hash"] = self._hash_password(new_password, salt)
+                    u["salt"] = salt.hex()
                     self._atomic_write(users)
                     return
             raise UserNotFound(username.value)
@@ -139,10 +150,17 @@ class UserRepository:
         if not user:
             return False
         stored = user.get("password_hash", "")
-        return stored == self._hash_password(password)
+        salt_hex = user.get("salt")
+        if not salt_hex:
+            raise InsecureRecordError(f"user '{name}' record missing required salt")
+        try:
+            salt = bytes.fromhex(salt_hex)
+        except Exception:
+            raise InsecureRecordError(f"user '{name}' record contains invalid salt")
+        computed = self._hash_password(password, salt)
+        return computed == stored
 
     def clear_all(self) -> None:
-        """Remove all users from the repository (destructive)."""
         with self._lock:
             self._atomic_write([])
 
@@ -156,6 +174,4 @@ def get_default_repository(path: Optional[str] = None) -> UserRepository:
         _default_repo = UserRepository(path=path or "users.json")
     return _default_repo
 
-# Convenience alias: expose a ready-to-use default repository instance.
-# Importers can use `from persistence import default_repository` to get it.
 default_repository: UserRepository = get_default_repository()
