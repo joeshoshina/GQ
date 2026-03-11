@@ -21,3 +21,55 @@ class ScreenRegistry:
 
     def all(self) -> Dict[str, ScreenFactory]:
         return dict(self._factories)
+
+def build_default_registry() -> ScreenRegistry:
+    from .adventure_result_screen import AdventureResultScreen
+    from .adventure_screen import AdventureScreen
+    from .menu_screen import MenuScreen
+    from .models import MenuOption, MenuState
+    from .registration_screen import RegistrationScreen
+    from .title_screen import TitleScreen
+    from mini_adventures.relic_hunt import RelicRaceAdventure
+    from profile import PlayerProfile
+
+    registry = ScreenRegistry()
+    registry.register("title", lambda stdscr: TitleScreen(stdscr, emit_events=True))
+    registry.register(
+        "Login",
+        lambda stdscr: MenuScreen(
+            stdscr,
+            emit_events=True,
+            menu_state=MenuState(
+                screen_id="Login",
+                title="Login",
+                subtitle="Not implemented",
+                options=[MenuOption(id="Back", label="Back")],
+            ),
+        ),
+    )
+    registry.register("Register", lambda stdscr: RegistrationScreen(stdscr))
+    registry.register(
+        "Settings",
+        lambda stdscr: MenuScreen(
+            stdscr,
+            emit_events=True,
+            menu_state=MenuState(
+                screen_id="Settings",
+                title="Settings",
+                subtitle="Not implemented",
+                options=[MenuOption(id="Back", label="Back")],
+            ),
+        ),
+    )
+    registry.register(
+        "adventure.relic_hunt",
+        lambda stdscr: AdventureScreen(
+            stdscr,
+            RelicRaceAdventure(
+                PlayerProfile("Player 1"),
+                PlayerProfile("Player 2"),
+            ),
+        ),
+    )
+    registry.register("adventure.result", lambda stdscr: AdventureResultScreen(stdscr))
+    return registry
