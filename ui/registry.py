@@ -28,25 +28,14 @@ def build_default_registry() -> ScreenRegistry:
     from .menu_screen import MenuScreen
     from .models import MenuOption, MenuState
     from .registration_screen import RegistrationScreen
+    from .login_screen import LoginScreen
     from .title_screen import TitleScreen
     from mini_adventures.relic_hunt import RelicRaceAdventure
     from profile import PlayerProfile
 
     registry = ScreenRegistry()
     registry.register("title", lambda stdscr: TitleScreen(stdscr, emit_events=True))
-    registry.register(
-        "Login",
-        lambda stdscr: MenuScreen(
-            stdscr,
-            emit_events=True,
-            menu_state=MenuState(
-                screen_id="Login",
-                title="Login",
-                subtitle="Not implemented",
-                options=[MenuOption(id="Back", label="Back")],
-            ),
-        ),
-    )
+    registry.register("Login", lambda stdscr: LoginScreen(stdscr))
     registry.register("Register", lambda stdscr: RegistrationScreen(stdscr))
     registry.register(
         "Settings",

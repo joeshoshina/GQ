@@ -8,6 +8,7 @@ from .models import (
     MenuOption,
     MenuState,
     RegistrationState,
+    LoginState,
     ScreenEvent,
     ScreenState,
 )
@@ -19,12 +20,15 @@ _menu_mod = importlib.import_module(".menu_screen", __package__)
 sys.modules.setdefault("menu_screen", _menu_mod)
 _title_mod = importlib.import_module(".title_screen", __package__)
 sys.modules.setdefault("title_screen", _title_mod)
+_login_mod = importlib.import_module(".login_screen", __package__)
+sys.modules.setdefault("login_screen", _login_mod)
 _reg_mod = importlib.import_module(".registration_screen", __package__)
 sys.modules.setdefault("registration_screen", _reg_mod)
 
 BaseScreen = _base_mod.BaseScreen
 MenuScreen = _menu_mod.MenuScreen
 TitleScreen = _title_mod.TitleScreen
+LoginScreen = _login_mod.LoginScreen
 RegistrationScreen = _reg_mod.RegistrationScreen
 
 
@@ -37,19 +41,7 @@ class ScreenManager:
     def _default_registry(self) -> ScreenRegistry:
         registry = ScreenRegistry()
         registry.register("title", lambda stdscr: TitleScreen(stdscr, emit_events=True))
-        registry.register(
-            "Login",
-            lambda stdscr: MenuScreen(
-                stdscr,
-                emit_events=True,
-                menu_state=MenuState(
-                    screen_id="Login",
-                    title="Login",
-                    subtitle="Not implemented",
-                    options=[MenuOption(id="Back", label="Back")],
-                ),
-            ),
-        )
+        registry.register("Login", lambda stdscr: LoginScreen(stdscr))
         registry.register("Register", lambda stdscr: RegistrationScreen(stdscr))
         registry.register(
             "Settings",

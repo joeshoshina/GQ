@@ -8,6 +8,7 @@ from ui import (
     MenuState,
     MenuOption,
     RegistrationState,
+    LoginState
 )
 
 from persistence import get_default_repository, UserAlreadyExists
@@ -46,7 +47,10 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
             if option_id == "Register":
                 event = yield RegistrationState(screen_id="Register")
                 continue
-            if option_id in ("Login", "Settings"):
+            if option_id == "Login":
+                event = yield LoginState(screen_id="Login")
+                continue
+            if option_id == "Settings":
                 event = yield MenuState(
                     screen_id=option_id,
                     title=option_id,
@@ -57,6 +61,45 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
             if option_id == "Back":
                 event = yield _TITLE_STATE
                 continue
+
+        if event.name == "login.back":
+            event = yield _TITLE_STATE
+            continue
+
+        if event.name == "login.submit":
+            username_raw = event.payload.get("username", "")
+            password_raw = event.payload.get("password", "")
+
+            try:
+                u = Username(username_raw)
+                u.value = username_raw
+                p = Password(password_raw)
+            except (TypeError, ValueError) as exc:
+                event = yield LoginState(
+                    screen_id="Login",
+                    values={"username": username_raw, "password": password_raw},
+                    error=str(exc),
+                )
+                continue
+
+            try:
+                if not _repo.verify_password(u, p):
+                    event = yield LoginState(
+                        screen_id="Login",
+                        values={"username": username_raw, "password": password_raw},
+                        error="Invalid username or password.",
+                    )
+                    continue
+            except Exception as exc:
+                event = yield LoginState(
+                    screen_id="Login",
+                    values={"username": username_raw, "password": password_raw},
+                    error=str(exc),
+                )
+                continue
+
+            event = yield _TITLE_STATE
+            continue
 
         if event.name == "register.back":
             event = yield _TITLE_STATE
