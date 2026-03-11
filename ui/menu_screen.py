@@ -128,6 +128,10 @@ class MenuScreen(BaseScreen):
             if not selected.enabled:
                 return None
             if self._emit_events:
+                if selected.id == "Play Relic Hunt":
+                    return ScreenEvent(name="menu.play_relic_hunt", payload={"option_id": selected.id})
+                if selected.id == "Play Escort Mission":
+                    return ScreenEvent(name="menu.play_escort_mission", payload={"option_id": selected.id})
                 return ScreenEvent(name="menu.select", payload={"option_id": selected.id})
             return selected.label
         return None
