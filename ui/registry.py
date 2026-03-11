@@ -2,6 +2,7 @@ import curses
 from typing import Callable, Dict, Optional
 
 from .base_screen import BaseScreen
+from .settings_screen import SettingsScreen
 
 ScreenFactory = Callable[["curses.window"], BaseScreen]
 
@@ -37,19 +38,7 @@ def build_default_registry() -> ScreenRegistry:
     registry.register("title", lambda stdscr: TitleScreen(stdscr, emit_events=True))
     registry.register("Login", lambda stdscr: LoginScreen(stdscr))
     registry.register("Register", lambda stdscr: RegistrationScreen(stdscr))
-    registry.register(
-        "Settings",
-        lambda stdscr: MenuScreen(
-            stdscr,
-            emit_events=True,
-            menu_state=MenuState(
-                screen_id="Settings",
-                title="Settings",
-                subtitle="Not implemented",
-                options=[MenuOption(id="Back", label="Back")],
-            ),
-        ),
-    )
+    registry.register("Settings", lambda stdscr: SettingsScreen(stdscr))
     registry.register(
         "adventure.relic_hunt",
         lambda stdscr: AdventureScreen(

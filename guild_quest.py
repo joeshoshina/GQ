@@ -12,7 +12,7 @@ from ui import (
 )
 
 from persistence import get_default_repository, UserAlreadyExists
-from guild_quest_subsystem.user import Username, Password, User
+from guild_quest_subsystem.user import Username, Password, User, Score
 
 _BASE_DIR = os.path.dirname(__file__)
 _DATA_FILE = os.path.join(_BASE_DIR, "data", "users.json")
@@ -99,7 +99,7 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
                 )
                 continue
 
-            user = User(user_id=record["id"], username=u)
+            user = User(user_id=record["id"], username=u, score=Score(record.get("score", 0)))
             event = yield _TITLE_STATE
             continue
 

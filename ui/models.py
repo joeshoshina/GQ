@@ -57,6 +57,13 @@ class LoginState(ScreenState):
 
 
 @dataclass
+class SettingsState(ScreenState):
+    score_display: str = "NUMERIC"
+    error: Optional[str] = None
+    help_text: str = "Left/Right to change — S to save — Esc to go back"
+
+
+@dataclass
 class AdventureState(ScreenState):
     adventure_name: str
     game_state: Mapping[str, Any] = field(default_factory=dict)

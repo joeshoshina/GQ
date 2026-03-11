@@ -118,12 +118,28 @@ class User:
         self,
         user_id: int,
         username: Optional[Username] = None,
+        score: Optional[Score] = None,
     ) -> None:
         if not isinstance(user_id, int) or isinstance(user_id, bool):
             raise TypeError("user_id must be an int")
         self.id: int = user_id
         self.username: Optional[Username] = username
+        self.score: Score = score if score is not None else Score(0)
         self.characters: List[Any] = []
+
+    def add_score(self, amount: int) -> None:
+        if not isinstance(amount, int) or isinstance(amount, bool):
+            raise TypeError("amount must be an int")
+        if amount < 0:
+            raise ValueError("amount must be non-negative")
+        self.score = Score(self.score.value + amount)
+
+    def display_score(self) -> str:
+        try:
+            from settings import Settings
+            return Settings.get_instance().format_score(self.score.value)
+        except Exception:
+            return str(self.score)
 
     def add_character(self, char: Any) -> None:
         self.characters.append(char)
@@ -138,6 +154,7 @@ class User:
         return {
             "id": self.id,
             "username": str(self.username) if self.username else None,
+            "score": self.score.value,
             "characters": list(self.characters),
         }
 
@@ -146,9 +163,10 @@ class User:
         uid = data.get("id")
         username_val = data.get("username")
         username = Username(username_val) if username_val is not None else None
-        u = cls(user_id=uid, username=username)
+        score = Score(data["score"]) if "score" in data else Score(0)
+        u = cls(user_id=uid, username=username, score=score)
         u.characters = list(data.get("characters", []))
         return u
 
     def __repr__(self) -> str:
-        return f"User(id={self.id!r}, username={self.username!r}, characters={len(self.characters)})"
+        return f"User(id={self.id!r}, username={self.username!r}, score={self.score!r}, characters={len(self.characters)})"
