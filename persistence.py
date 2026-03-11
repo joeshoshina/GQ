@@ -8,6 +8,7 @@ import os
 import tempfile
 import threading
 import hashlib
+import uuid
 from typing import Optional, List, Dict
 
 from guild_quest_subsystem.user import Username, Password
@@ -96,7 +97,14 @@ class UserRepository:
                 return dict(u)
         return None
 
-    def save_user(self, username: Username, password: Password) -> None:
+    def get_user_by_id(self, user_id: str) -> Optional[Dict[str, str]]:
+        users = self._read_all()
+        for u in users:
+            if u.get("id") == user_id:
+                return dict(u)
+        return None
+
+    def save_user(self, username: Username, password: Password) -> str:
         if not isinstance(username, Username):
             raise TypeError("username must be a Username instance")
         if not isinstance(password, Password):
@@ -108,7 +116,9 @@ class UserRepository:
                     raise UserAlreadyExists(username.value)
             salt = self._generate_salt()
             password_hash = self._hash_password(password, salt)
+            user_id = str(uuid.uuid4())
             record = {
+                "id": user_id,
                 "username": username.value,
                 "password_hash": password_hash,
                 "salt": salt.hex(),
@@ -116,6 +126,7 @@ class UserRepository:
             }
             users.append(record)
             self._atomic_write(users)
+            return user_id
 
     def update_password(self, username: Username, new_password: Password) -> None:
         if not isinstance(username, Username):
@@ -142,13 +153,13 @@ class UserRepository:
                 raise UserNotFound(name)
             self._atomic_write(new_users)
 
-    def verify_password(self, username: Username | str, password: Password) -> bool:
+    def verify_password(self, username: Username | str, password: Password) -> Optional[Dict[str, str]]:
         name = username.value if isinstance(username, Username) else username
         if not isinstance(password, Password):
             raise TypeError("password must be a Password instance")
         user = self.get_user(name)
         if not user:
-            return False
+            return None
         stored = user.get("password_hash", "")
         salt_hex = user.get("salt")
         if not salt_hex:
@@ -158,7 +169,7 @@ class UserRepository:
         except Exception:
             raise InsecureRecordError(f"user '{name}' record contains invalid salt")
         computed = self._hash_password(password, salt)
-        return computed == stored
+        return dict(user) if computed == stored else None
 
     def clear_all(self) -> None:
         with self._lock:
