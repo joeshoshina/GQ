@@ -215,3 +215,5 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 users.json
+# DS_Store
+.DS_Store
