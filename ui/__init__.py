@@ -12,6 +12,8 @@ from .models import (
     SettingsState,
     ScreenEvent,
     ScreenState,
+    CharacterSelectState,
+    CharacterCreateState,
 )
 from .registry import ScreenRegistry
 
@@ -27,6 +29,10 @@ _reg_mod = importlib.import_module(".registration_screen", __package__)
 sys.modules.setdefault("registration_screen", _reg_mod)
 _settings_mod = importlib.import_module(".settings_screen", __package__)
 sys.modules.setdefault("settings_screen", _settings_mod)
+_char_select_mod = importlib.import_module(".character_select_screen", __package__)
+sys.modules.setdefault("character_select_screen", _char_select_mod)
+_char_create_mod = importlib.import_module(".character_create_screen", __package__)
+sys.modules.setdefault("character_create_screen", _char_create_mod)
 
 BaseScreen = _base_mod.BaseScreen
 MenuScreen = _menu_mod.MenuScreen
@@ -34,6 +40,8 @@ TitleScreen = _title_mod.TitleScreen
 LoginScreen = _login_mod.LoginScreen
 RegistrationScreen = _reg_mod.RegistrationScreen
 SettingsScreen = _settings_mod.SettingsScreen
+CharacterSelectScreen = _char_select_mod.CharacterSelectScreen
+CharacterCreateScreen = _char_create_mod.CharacterCreateScreen
 
 
 class ScreenManager:
@@ -48,6 +56,8 @@ class ScreenManager:
         registry.register("Login", lambda stdscr: LoginScreen(stdscr))
         registry.register("Register", lambda stdscr: RegistrationScreen(stdscr))
         registry.register("Settings", lambda stdscr: SettingsScreen(stdscr))
+        registry.register("CharacterSelect", lambda stdscr: CharacterSelectScreen(stdscr))
+        registry.register("CharacterCreate", lambda stdscr: CharacterCreateScreen(stdscr))
         return registry
 
     def register(self, screen_id: str, factory: Callable[["curses.window"], BaseScreen]) -> None:
@@ -68,6 +78,10 @@ class ScreenManager:
             return None
         screen = factory(stdscr)
         self._screen_cache[screen_id] = screen
+        try:
+            screen.on_enter()
+        except Exception:
+            pass
         return screen
 
     def _main(self, stdscr: "curses.window", state_stream: Generator[ScreenState, ScreenEvent, None]) -> None:

@@ -120,9 +120,9 @@ class User:
         username: Optional[Username] = None,
         score: Optional[Score] = None,
     ) -> None:
-        if not isinstance(user_id, int) or isinstance(user_id, bool):
-            raise TypeError("user_id must be an int")
-        self.id: int = user_id
+        if not isinstance(user_id, str) or isinstance(user_id, bool):
+            raise TypeError("user_id must be an string")
+        self.user_id: str = user_id
         self.username: Optional[Username] = username
         self.score: Score = score if score is not None else Score(0)
         self.characters: List[Any] = []
@@ -152,7 +152,7 @@ class User:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "id": self.id,
+            "user_id": self.user_id,
             "username": str(self.username) if self.username else None,
             "score": self.score.value,
             "characters": list(self.characters),
@@ -169,4 +169,4 @@ class User:
         return u
 
     def __repr__(self) -> str:
-        return f"User(id={self.id!r}, username={self.username!r}, score={self.score!r}, characters={len(self.characters)})"
+        return f"User(user_id={self.user_id!r}, username={self.username!r}, score={self.score!r}, characters={len(self.characters)})"

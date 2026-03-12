@@ -84,3 +84,24 @@ class AdventureResultState(ScreenState):
     )
     selected_index: int = 0
     help_text: str = "Use Arrows to navigate — Enter to select"
+
+
+@dataclass
+class CharacterSelectState(ScreenState):
+    user_id: str = ""
+    username: str = ""
+    characters: Sequence[Any] = field(default_factory=list)  # List[CharacterRecord]
+    selected_index: int = 0
+    error: Optional[str] = None
+    help_text: str = "Use Arrows to navigate — Enter to select — Esc to log out"
+
+
+@dataclass
+class CharacterCreateState(ScreenState):
+    user_id: str = ""
+    username: str = ""
+    selected_class_index: int = 0
+    name_value: str = ""
+    step: str = "class"
+    error: Optional[str] = None
+    help_text: str = "Use Arrows to navigate — Enter to confirm — Esc to go back"
