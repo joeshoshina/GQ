@@ -28,8 +28,8 @@ from typing import Set, Tuple
 
 GRID_W = 12
 GRID_H = 10
-RELIC_COUNT = 5      
-RELICS_NEEDED = 3    
+RELIC_COUNT = 5
+RELICS_NEEDED = 3
 MINUTES_PER_TURN = 15
 
 _RELIC_ITEM = Item("Relic", item_type="Quest", rarity="Rare",
@@ -44,7 +44,7 @@ class RelicRaceAdventure(BaseAdventure):
     """
 
     NAME = "Relic Race"
-    DESCRIPTION = "Competitive — race to collect 3 relics before your rival!"
+    DESCRIPTION = "Competitive - race to collect 3 relics before your rival!"
 
     KEY_MAP: dict[str, tuple[int, str]] = {
         #P1
@@ -85,7 +85,7 @@ class RelicRaceAdventure(BaseAdventure):
         )
         ctx.players = [p1, p2]
         ctx.relics_needed = RELICS_NEEDED
-        ctx.world_time = WorldTime(0, 6, 0) 
+        ctx.world_time = WorldTime(0, 6, 0)
         self._ctx = ctx
         self._result = None
 
@@ -146,7 +146,7 @@ class RelicRaceAdventure(BaseAdventure):
 
     @staticmethod
     def _make_player(profile, x: int, y: int) -> dict:
-        profile.character.get_inventory().clear()  
+        profile.character.get_inventory().clear()
         return {
             "name":      profile.username,
             "character": profile.character,
@@ -179,7 +179,7 @@ class RelicRaceAdventure(BaseAdventure):
                 relics.add((rx, ry))
             attempts += 1
         return relics
-    
+
     def _record_results(self) -> None:
         if self._ctx is None or self._result is None:
             return

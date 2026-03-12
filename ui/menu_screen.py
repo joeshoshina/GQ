@@ -20,7 +20,7 @@ class MenuScreen(BaseScreen):
         self._options: Sequence[MenuOption] = ()
         self._title = title
         self._subtitle = subtitle
-        self._help_text = "Use Arrows to navigate — Enter to select"
+        self._help_text = "Use Arrows to navigate - Enter to select"
         self._idx = 0
         self._highlight_pair = highlight_pair
         if menu_state is not None:

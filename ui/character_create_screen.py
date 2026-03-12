@@ -68,7 +68,7 @@ class CharacterCreateScreen(BaseScreen):
         top_y = max(1, max_y // 8)
 
         self._draw_centered(top_y, "Create Character", curses.A_BOLD)
-        self._draw_centered(top_y + 1, "Step 1 of 2 — Choose a Class", curses.A_DIM)
+        self._draw_centered(top_y + 1, "Step 1 of 2 - Choose a Class", curses.A_DIM)
 
         idx = max(0, min(s.selected_class_index, len(_CLASSES) - 1))
         menu_top = top_y + 3
@@ -106,7 +106,7 @@ class CharacterCreateScreen(BaseScreen):
         selected_cls = _CLASSES[max(0, min(s.selected_class_index, len(_CLASSES) - 1))]
 
         self._draw_centered(top_y, "Create Character", curses.A_BOLD)
-        self._draw_centered(top_y + 1, "Step 2 of 2 — Name Your Character", curses.A_DIM)
+        self._draw_centered(top_y + 1, "Step 2 of 2 - Name Your Character", curses.A_DIM)
 
         cls_label = f"Class: {selected_cls.value}"
         cls_attr = curses.color_pair(5) if curses.has_colors() else curses.A_NORMAL

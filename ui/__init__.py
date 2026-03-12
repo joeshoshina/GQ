@@ -1,3 +1,16 @@
+"""
+GuildQuest UI System with Event-Driven State Machine.
+
+This module orchestrates the UI application with an event-driven state machine:
+- ScreenManager: Central coordinator managing screen lifecycle and state transitions
+- app_flow(): Generator-based state machine that yields states and receives ScreenEvent objects
+- Input handling: Keyboard events → screen.handle_key() → ScreenEvent → state change
+
+Key responsibilities:
+- Screen factory instantiation via ScreenRegistry (Factory Pattern)
+- Event-driven state transitions via generator protocol (yield/send)
+- Curses event loop integration (blocking getkey() calls)
+"""
 import importlib
 import sys
 import curses
@@ -5,6 +18,8 @@ import queue
 from typing import Callable, Dict, Generator, Optional
 
 from .models import (
+    AdventureResultState,
+    AdventureState,
     MenuOption,
     MenuState,
     RegistrationState,
@@ -15,7 +30,7 @@ from .models import (
     CharacterSelectState,
     CharacterCreateState,
 )
-from .registry import ScreenRegistry
+from .registry import ScreenRegistry, build_default_registry
 
 _base_mod = importlib.import_module(".base_screen", __package__)
 sys.modules.setdefault("base_screen", _base_mod)
@@ -46,19 +61,11 @@ CharacterCreateScreen = _char_create_mod.CharacterCreateScreen
 
 class ScreenManager:
     def __init__(self, registry: Optional[ScreenRegistry] = None) -> None:
-        self._registry = registry or self._default_registry()
+        self._registry = registry or build_default_registry()
         self._screen_cache: Dict[str, BaseScreen] = {}
         self._external_queue = queue.Queue()
 
-    def _default_registry(self) -> ScreenRegistry:
-        registry = ScreenRegistry()
-        registry.register("title", lambda stdscr: TitleScreen(stdscr, emit_events=True))
-        registry.register("Login", lambda stdscr: LoginScreen(stdscr))
-        registry.register("Register", lambda stdscr: RegistrationScreen(stdscr))
-        registry.register("Settings", lambda stdscr: SettingsScreen(stdscr))
-        registry.register("CharacterSelect", lambda stdscr: CharacterSelectScreen(stdscr))
-        registry.register("CharacterCreate", lambda stdscr: CharacterCreateScreen(stdscr))
-        return registry
+
 
     def register(self, screen_id: str, factory: Callable[["curses.window"], BaseScreen]) -> None:
         self._registry.register(screen_id, factory)

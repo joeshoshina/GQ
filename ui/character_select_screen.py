@@ -47,7 +47,7 @@ class CharacterSelectScreen(BaseScreen):
     def _build_options(self):
         options = []
         for char in self._state.characters:
-            label = f"{char.name}  —  {char.character_class.value}  (Level {char.level})"
+            label = f"{char.name}  -  {char.character_class.value}  (Level {char.level})"
             options.append((label, False))
         options.append(("+ New Character", True))
         return options
