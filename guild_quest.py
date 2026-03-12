@@ -8,10 +8,11 @@ from ui import (
     MenuState,
     MenuOption,
     RegistrationState,
+    LoginState,
 )
 
 from persistence import get_default_repository, UserAlreadyExists
-from guild_quest_subsystem.user import Username, Password
+from guild_quest_subsystem.user import Username, Password, User, Score
 
 _BASE_DIR = os.path.dirname(__file__)
 _DATA_FILE = os.path.join(_BASE_DIR, "data", "users.json")
@@ -46,7 +47,10 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
             if option_id == "Register":
                 event = yield RegistrationState(screen_id="Register")
                 continue
-            if option_id in ("Login", "Settings"):
+            if option_id == "Login":
+                event = yield LoginState(screen_id="Login")
+                continue
+            if option_id == "Settings":
                 event = yield MenuState(
                     screen_id=option_id,
                     title=option_id,
@@ -57,6 +61,47 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
             if option_id == "Back":
                 event = yield _TITLE_STATE
                 continue
+
+        if event.name == "login.back":
+            event = yield _TITLE_STATE
+            continue
+
+        if event.name == "login.submit":
+            username_raw = event.payload.get("username", "")
+            password_raw = event.payload.get("password", "")
+
+            try:
+                u = Username(username_raw)
+                u.value = username_raw
+                p = Password(password_raw)
+            except (TypeError, ValueError) as exc:
+                event = yield LoginState(
+                    screen_id="Login",
+                    values={"username": username_raw, "password": password_raw},
+                    error=str(exc),
+                )
+                continue
+
+            try:
+                record = _repo.verify_password(u, p)
+                if record is None:
+                    event = yield LoginState(
+                        screen_id="Login",
+                        values={"username": username_raw, "password": password_raw},
+                        error="Invalid username or password.",
+                    )
+                    continue
+            except Exception as exc:
+                event = yield LoginState(
+                    screen_id="Login",
+                    values={"username": username_raw, "password": password_raw},
+                    error=str(exc),
+                )
+                continue
+
+            user = User(user_id=record["id"], username=u, score=Score(record.get("score", 0)))
+            event = yield _TITLE_STATE
+            continue
 
         if event.name == "register.back":
             event = yield _TITLE_STATE
@@ -71,30 +116,27 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
                 u.value = username_raw
                 p = Password(password_raw)
             except (TypeError, ValueError) as exc:
-                event = yield MenuState(
+                event = yield RegistrationState(
                     screen_id="Register",
-                    title="Registration Error",
-                    subtitle=str(exc),
-                    options=[MenuOption(id="Back", label="Back")],
+                    values={"username": username_raw, "password": password_raw, "confirm_password": ""},
+                    error=str(exc),
                 )
                 continue
 
             try:
                 _repo.save_user(u, p)
             except UserAlreadyExists:
-                event = yield MenuState(
+                event = yield RegistrationState(
                     screen_id="Register",
-                    title="Registration Failed",
-                    subtitle=f"User '{u.value}' already exists.",
-                    options=[MenuOption(id="Back", label="Back")],
+                    values={"username": username_raw, "password": password_raw, "confirm_password": ""},
+                    error=f"User '{u.value}' already exists.",
                 )
                 continue
             except Exception as exc:
-                event = yield MenuState(
+                event = yield RegistrationState(
                     screen_id="Register",
-                    title="Registration Failed",
-                    subtitle=str(exc),
-                    options=[MenuOption(id="Back", label="Back")],
+                    values={"username": username_raw, "password": password_raw, "confirm_password": ""},
+                    error=str(exc),
                 )
                 continue
 

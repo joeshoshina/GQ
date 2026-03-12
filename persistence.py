@@ -8,6 +8,7 @@ import os
 import tempfile
 import threading
 import hashlib
+import uuid
 from typing import Optional, List, Dict
 
 from guild_quest_subsystem.user import Username, Password
@@ -20,6 +21,9 @@ class UserAlreadyExists(PersistenceError):
     pass
 
 class UserNotFound(PersistenceError):
+    pass
+
+class InsecureRecordError(PersistenceError):
     pass
 
 
@@ -72,11 +76,14 @@ class UserRepository:
                 pass
 
     @staticmethod
-    def _hash_password(password: Password) -> str:
-        if not isinstance(password, Password):
-            raise TypeError("password must be a Password instance")
+    def _generate_salt(length: int = 16) -> bytes:
+        return os.urandom(length)
+
+    @staticmethod
+    def _hash_password(password: Password, salt: bytes) -> str:
         raw = password.value.encode("utf-8")
-        return hashlib.sha256(raw).hexdigest()
+        dk = hashlib.pbkdf2_hmac("sha256", raw, bytes(salt), 100_000)
+        return dk.hex()
 
     def list_usernames(self) -> List[str]:
         users = self._read_all()
@@ -90,7 +97,14 @@ class UserRepository:
                 return dict(u)
         return None
 
-    def save_user(self, username: Username, password: Password) -> None:
+    def get_user_by_id(self, user_id: str) -> Optional[Dict[str, str]]:
+        users = self._read_all()
+        for u in users:
+            if u.get("id") == user_id:
+                return dict(u)
+        return None
+
+    def save_user(self, username: Username, password: Password) -> str:
         if not isinstance(username, Username):
             raise TypeError("username must be a Username instance")
         if not isinstance(password, Password):
@@ -100,13 +114,19 @@ class UserRepository:
             for u in users:
                 if u.get("username") == username.value:
                     raise UserAlreadyExists(username.value)
+            salt = self._generate_salt()
+            password_hash = self._hash_password(password, salt)
+            user_id = str(uuid.uuid4())
             record = {
+                "id": user_id,
                 "username": username.value,
-                "password_hash": self._hash_password(password),
+                "password_hash": password_hash,
+                "salt": salt.hex(),
                 "score": 0,
             }
             users.append(record)
             self._atomic_write(users)
+            return user_id
 
     def update_password(self, username: Username, new_password: Password) -> None:
         if not isinstance(username, Username):
@@ -117,7 +137,9 @@ class UserRepository:
             users = self._read_all()
             for u in users:
                 if u.get("username") == username.value:
-                    u["password_hash"] = self._hash_password(new_password)
+                    salt = self._generate_salt()
+                    u["password_hash"] = self._hash_password(new_password, salt)
+                    u["salt"] = salt.hex()
                     self._atomic_write(users)
                     return
             raise UserNotFound(username.value)
@@ -131,18 +153,25 @@ class UserRepository:
                 raise UserNotFound(name)
             self._atomic_write(new_users)
 
-    def verify_password(self, username: Username | str, password: Password) -> bool:
+    def verify_password(self, username: Username | str, password: Password) -> Optional[Dict[str, str]]:
         name = username.value if isinstance(username, Username) else username
         if not isinstance(password, Password):
             raise TypeError("password must be a Password instance")
         user = self.get_user(name)
         if not user:
-            return False
+            return None
         stored = user.get("password_hash", "")
-        return stored == self._hash_password(password)
+        salt_hex = user.get("salt")
+        if not salt_hex:
+            raise InsecureRecordError(f"user '{name}' record missing required salt")
+        try:
+            salt = bytes.fromhex(salt_hex)
+        except Exception:
+            raise InsecureRecordError(f"user '{name}' record contains invalid salt")
+        computed = self._hash_password(password, salt)
+        return dict(user) if computed == stored else None
 
     def clear_all(self) -> None:
-        """Remove all users from the repository (destructive)."""
         with self._lock:
             self._atomic_write([])
 
@@ -156,6 +185,4 @@ def get_default_repository(path: Optional[str] = None) -> UserRepository:
         _default_repo = UserRepository(path=path or "users.json")
     return _default_repo
 
-# Convenience alias: expose a ready-to-use default repository instance.
-# Importers can use `from persistence import default_repository` to get it.
 default_repository: UserRepository = get_default_repository()

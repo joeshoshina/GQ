@@ -1,15 +1,18 @@
+# GQ/guild_quest_subsystem/user.py
 import re
+from typing import Any, Dict, List, Optional
+
 
 class Username:
     def __init__(self, value: str):
-        self._value = value
+        self.value = value  # use setter validation
 
     @property
     def value(self) -> str:
         return self._value
 
     @value.setter
-    def value(self, v: str):
+    def value(self, v: str) -> None:
         if not isinstance(v, str):
             raise TypeError("username must be a string")
         v = v.strip()
@@ -27,7 +30,7 @@ class Username:
     def __repr__(self) -> str:
         return f"Username({self._value!r})"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Username):
             return self._value == other._value
         if isinstance(other, str):
@@ -40,28 +43,28 @@ class Username:
 
 class Password:
     def __init__(self, value: str):
-        self.value = value
+        self.value = value  # use setter validation
 
     @property
-    def value(self):
+    def value(self) -> str:
         return self._value
 
     @value.setter
-    def value(self, v: str):
+    def value(self, v: str) -> None:
         if not isinstance(v, str):
-            raise TypeError("The password must be type string")
+            raise TypeError("password must be a string")
         if not (6 <= len(v) <= 30):
-            raise ValueError("Password must be between 6 and 30 characters long")
+            raise ValueError("password must be between 6 and 30 characters long")
         self._value = v
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Password{**SENSITIVE VALUE HIDDEN**}"
 
     def __repr__(self) -> str:
-        return f"Username({self._value!r})"
+        return "Password(<hidden>)"
 
-    def __eq__(self, other) -> bool:
-        if isinstance(other, Username):
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Password):
             return self._value == other._value
         if isinstance(other, str):
             return self._value == other
@@ -69,6 +72,7 @@ class Password:
 
     def __hash__(self) -> int:
         return hash(self._value)
+
 
 class Score:
     def __init__(self, value: int):
@@ -79,7 +83,7 @@ class Score:
         return self._value
 
     @value.setter
-    def value(self, v: int):
+    def value(self, v: int) -> None:
         if not isinstance(v, int) or isinstance(v, bool):
             raise TypeError("score must be an int")
         if v < 0:
@@ -98,7 +102,7 @@ class Score:
     def __repr__(self) -> str:
         return f"Score({self._value!r})"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, Score):
             return self._value == other._value
         if isinstance(other, int) and not isinstance(other, bool):
@@ -107,3 +111,62 @@ class Score:
 
     def __hash__(self) -> int:
         return hash(self._value)
+
+
+class User:
+    def __init__(
+        self,
+        user_id: int,
+        username: Optional[Username] = None,
+        score: Optional[Score] = None,
+    ) -> None:
+        if not isinstance(user_id, int) or isinstance(user_id, bool):
+            raise TypeError("user_id must be an int")
+        self.id: int = user_id
+        self.username: Optional[Username] = username
+        self.score: Score = score if score is not None else Score(0)
+        self.characters: List[Any] = []
+
+    def add_score(self, amount: int) -> None:
+        if not isinstance(amount, int) or isinstance(amount, bool):
+            raise TypeError("amount must be an int")
+        if amount < 0:
+            raise ValueError("amount must be non-negative")
+        self.score = Score(self.score.value + amount)
+
+    def display_score(self) -> str:
+        try:
+            from settings import Settings
+            return Settings.get_instance().format_score(self.score.value)
+        except Exception:
+            return str(self.score)
+
+    def add_character(self, char: Any) -> None:
+        self.characters.append(char)
+
+    def remove_character(self, index: int) -> Any:
+        return self.characters.pop(index)
+
+    def list_characters(self) -> List[Any]:
+        return list(self.characters)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "username": str(self.username) if self.username else None,
+            "score": self.score.value,
+            "characters": list(self.characters),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "User":
+        uid = data.get("id")
+        username_val = data.get("username")
+        username = Username(username_val) if username_val is not None else None
+        score = Score(data["score"]) if "score" in data else Score(0)
+        u = cls(user_id=uid, username=username, score=score)
+        u.characters = list(data.get("characters", []))
+        return u
+
+    def __repr__(self) -> str:
+        return f"User(id={self.id!r}, username={self.username!r}, score={self.score!r}, characters={len(self.characters)})"

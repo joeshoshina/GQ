@@ -48,6 +48,22 @@ class RegistrationState(ScreenState):
 
 
 @dataclass
+class LoginState(ScreenState):
+    fields: Sequence[str] = field(default_factory=lambda: ["username", "password"])
+    values: dict = field(default_factory=dict)
+    active_field: int = 0
+    error: Optional[str] = None
+    help_text: str = "Tab/Arrows to move — Enter to submit — Esc to go back"
+
+
+@dataclass
+class SettingsState(ScreenState):
+    score_display: str = "NUMERIC"
+    error: Optional[str] = None
+    help_text: str = "Left/Right to change — S to save — Esc to go back"
+
+
+@dataclass
 class AdventureState(ScreenState):
     adventure_name: str
     game_state: Mapping[str, Any] = field(default_factory=dict)
