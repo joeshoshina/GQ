@@ -35,6 +35,8 @@ class ScreenRegistry:
 
 
 def build_default_registry() -> ScreenRegistry:
+    from .character_create_screen import CharacterCreateScreen
+    from .character_select_screen import CharacterSelectScreen
     from .login_screen import LoginScreen
     from .menu_screen import MenuScreen
     from .models import MenuState
@@ -63,4 +65,6 @@ def build_default_registry() -> ScreenRegistry:
     registry.register("Login", lambda stdscr: LoginScreen(stdscr))
     registry.register("Register", lambda stdscr: RegistrationScreen(stdscr))
     registry.register("Settings", lambda stdscr: SettingsScreen(stdscr))
+    registry.register("CharacterSelect", lambda stdscr: CharacterSelectScreen(stdscr))
+    registry.register("CharacterCreate", lambda stdscr: CharacterCreateScreen(stdscr))
     return registry

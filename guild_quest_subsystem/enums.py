@@ -26,3 +26,21 @@ class TimeDisplayPreference(Enum):
 class LootType(Enum):
     GRANT = "GRANT"
     REMOVE = "REMOVE"
+
+
+class CharacterClass(Enum):
+    WARRIOR  = "Warrior"
+    MAGE     = "Mage"
+    ROGUE    = "Rogue"
+    CLERIC   = "Cleric"
+
+    def description(self) -> str:
+        return _CLASS_DESCRIPTIONS[self]
+
+
+_CLASS_DESCRIPTIONS = {
+    CharacterClass.WARRIOR: "A heavily armoured frontliner. High endurance, excels in melee combat.",
+    CharacterClass.MAGE:    "A scholarly spellcaster. Fragile but commands devastating arcane power.",
+    CharacterClass.ROGUE:   "A swift and cunning operative. Strikes hard from the shadows.",
+    CharacterClass.CLERIC:  "A divine servant. Balances healing support with holy offensive magic.",
+}

@@ -10,14 +10,23 @@ from ui import (
     RegistrationState,
     LoginState,
     SettingsState,
+    CharacterSelectState,
+    CharacterCreateState,
 )
 
 from persistence import get_default_repository, UserAlreadyExists
+from character_repository import (
+    get_default_character_repository,
+    CharacterAlreadyExists,
+)
 from guild_quest_subsystem.user import Username, Password, User, Score
+from guild_quest_subsystem.enums import CharacterClass
 
 _BASE_DIR = os.path.dirname(__file__)
 _DATA_FILE = os.path.join(_BASE_DIR, "data", "users.json")
+_CHAR_FILE = os.path.join(_BASE_DIR, "data", "characters.json")
 _repo = get_default_repository(path=_DATA_FILE)
+_char_repo = get_default_character_repository(path=_CHAR_FILE)
 
 
 _TITLE_STATE = MenuState(
@@ -72,7 +81,7 @@ def _adventure_placeholder_state(user: User, adventure_name: str) -> MenuState:
     return MenuState(
         screen_id="adventures",
         title=adventure_name,
-        subtitle=f"Logged in as {username} — adventure UI wiring comes next",
+        subtitle=f"Logged in as {username} - adventure UI wiring comes next",
         options=[MenuOption(id="Back", label="Back")],
     )
 
@@ -153,10 +162,92 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
                 )
                 continue
 
-            score_value = record.get("score", 0)
-            user = User(user_id=record["id"], username=u, score=Score(int(score_value)))
-            current_user = user
-            event = yield _logged_in_menu_state(current_user)
+            user = User(user_id=record["id"], username=u, score=Score(record.get("score", 0)))
+            characters = _char_repo.get_characters_for_user(user.user_id)
+            event = yield CharacterSelectState(
+                screen_id="CharacterSelect",
+                user_id=user.user_id,
+                username=u.value,
+                characters=characters,
+            )
+            continue
+
+        if event.name == "character_select.back":
+            event = yield _TITLE_STATE
+            continue
+
+        if event.name == "character_select.new":
+            user_id = event.payload.get("user_id", "")
+            username = event.payload.get("username", "")
+            event = yield CharacterCreateState(
+                screen_id="CharacterCreate",
+                user_id=user_id,
+                username=username,
+            )
+            continue
+
+        if event.name == "character_select.choose":
+            user_id = event.payload.get("user_id", "")
+            username = event.payload.get("username", "")
+            characters = _char_repo.get_characters_for_user(user_id)
+            event = yield CharacterSelectState(
+                screen_id="CharacterSelect",
+                user_id=user_id,
+                username=username,
+                characters=characters,
+            )
+            continue
+
+        if event.name == "character_create.back":
+            user_id = event.payload.get("user_id", "")
+            username = event.payload.get("username", "")
+            characters = _char_repo.get_characters_for_user(user_id)
+            event = yield CharacterSelectState(
+                screen_id="CharacterSelect",
+                user_id=user_id,
+                username=username,
+                characters=characters,
+            )
+            continue
+
+        if event.name == "character_create.submit":
+            user_id = event.payload.get("user_id", "")
+            username = event.payload.get("username", "")
+            name = event.payload.get("name", "")
+            class_value = event.payload.get("character_class", CharacterClass.WARRIOR.value)
+            try:
+                character_class = CharacterClass(class_value)
+            except ValueError:
+                character_class = CharacterClass.WARRIOR
+            try:
+                _char_repo.create_character(
+                    user_id=user_id,
+                    name=name,
+                    character_class=character_class,
+                )
+            except CharacterAlreadyExists as exc:
+                event = yield CharacterCreateState(
+                    screen_id="CharacterCreate",
+                    user_id=user_id,
+                    username=username,
+                    error=str(exc),
+                )
+                continue
+            except Exception as exc:
+                event = yield CharacterCreateState(
+                    screen_id="CharacterCreate",
+                    user_id=user_id,
+                    username=username,
+                    error=str(exc),
+                )
+                continue
+            characters = _char_repo.get_characters_for_user(user_id)
+            event = yield CharacterSelectState(
+                screen_id="CharacterSelect",
+                user_id=user_id,
+                username=username,
+                characters=characters,
+            )
             continue
 
         if event.name == "register.back":
