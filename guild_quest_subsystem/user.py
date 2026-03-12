@@ -1,5 +1,6 @@
 # GQ/guild_quest_subsystem/user.py
 import re
+import uuid
 from typing import Any, Dict, List, Optional
 
 
@@ -116,13 +117,20 @@ class Score:
 class User:
     def __init__(
         self,
-        user_id: int,
+        user_id: str,
         username: Optional[Username] = None,
         score: Optional[Score] = None,
     ) -> None:
-        if not isinstance(user_id, int) or isinstance(user_id, bool):
-            raise TypeError("user_id must be an int")
-        self.id: int = user_id
+        if not isinstance(user_id, str):
+            raise TypeError("user_id must be a UUID string")
+        user_id = user_id.strip()
+        if not user_id:
+            raise ValueError("user_id cannot be empty")
+        try:
+            uuid.UUID(user_id)
+        except (ValueError, AttributeError, TypeError):
+            raise ValueError("user_id must be a valid UUID string")
+        self.id: str = user_id
         self.username: Optional[Username] = username
         self.score: Score = score if score is not None else Score(0)
         self.characters: List[Any] = []
