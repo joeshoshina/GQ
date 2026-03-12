@@ -36,12 +36,30 @@ class ScreenRegistry:
 
 def build_default_registry() -> ScreenRegistry:
     from .login_screen import LoginScreen
+    from .menu_screen import MenuScreen
+    from .models import MenuState
     from .registration_screen import RegistrationScreen
     from .settings_screen import SettingsScreen
     from .title_screen import TitleScreen
 
     registry = ScreenRegistry()
     registry.register("title", lambda stdscr: TitleScreen(stdscr, emit_events=True))
+    registry.register(
+        "home",
+        lambda stdscr: MenuScreen(
+            stdscr,
+            emit_events=True,
+            menu_state=MenuState(screen_id="home"),
+        ),
+    )
+    registry.register(
+        "adventures",
+        lambda stdscr: MenuScreen(
+            stdscr,
+            emit_events=True,
+            menu_state=MenuState(screen_id="adventures"),
+        ),
+    )
     registry.register("Login", lambda stdscr: LoginScreen(stdscr))
     registry.register("Register", lambda stdscr: RegistrationScreen(stdscr))
     registry.register("Settings", lambda stdscr: SettingsScreen(stdscr))
