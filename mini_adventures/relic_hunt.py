@@ -8,32 +8,35 @@ Key components:
 - Strategies injected via AdventureContext:
   - GridMovement: Handles movement with boundary and collision detection
   - RelicCountWin: Checks if player has collected 3+ relics
-  - TurnBasedTime: Advances world time each turn (15 minutes per turn)
+    - Turn timer: 3-second alternating player turns (P1 starts)
 - Grid rendering: Walls (#), empty tiles (.), relics (*), players (1/2)
 """
 
 import random
+import time
+
 from .base_adventure import BaseAdventure
 from .context import AdventureContext
 from .strategies.movement import GridMovement
 from .strategies.win_condition import RelicCountWin
-from .strategies.time_strategy import TurnBasedTime
-from guild_quest_subsystem.inventory import Item
 from guild_quest_subsystem.enums import LootType
 from guild_quest_subsystem.character import LootTransaction
-from guild_quest_subsystem.world_time import WorldTime
-from guild_quest_subsystem.realm import Realm
-from guild_quest_subsystem.time_rule import TimeRule
-from typing import Set, Tuple
+from guild_quest_subsystem.inventory import Item
 
 GRID_W = 12
 GRID_H = 10
-RELIC_COUNT = 5
 RELICS_NEEDED = 3
-MINUTES_PER_TURN = 15
+TURN_SECONDS = 3
 
 _RELIC_ITEM = Item("Relic", item_type="Quest", rarity="Rare",
                    description="An ancient relic hidden in the realm.")
+
+_REWARD_ITEMS = (
+    Item("Mystic Blade", item_type="Weapon", rarity="Rare", description="A shimmering blade of old."),
+    Item("Guardian Charm", item_type="Trinket", rarity="Uncommon", description="A charm said to protect its bearer."),
+    Item("Phoenix Feather", item_type="Crafting", rarity="Epic", description="Warm to the touch and faintly glowing."),
+    Item("Starlight Cloak", item_type="Armor", rarity="Rare", description="A cloak woven with silver thread."),
+)
 
 
 class RelicRaceAdventure(BaseAdventure):
@@ -60,13 +63,9 @@ class RelicRaceAdventure(BaseAdventure):
         self._profile2 = profile2
         self._ctx: AdventureContext | None = None
         self._result: str | None = None
-
-        self._realm = Realm(
-            name="The Shattered Wilds",
-            description="Ruins where ancient relics lie scattered.",
-            map_identity="shattered_wilds",
-            time_rule=TimeRule(offset_minutes=120),
-        )
+        self._last_reward_item: Item | None = None
+        self._active_player_index: int = 0
+        self._turn_deadline: float = 0.0
 
     def start(self) -> None:
         p1 = self._make_player(self._profile1, x=0, y=0)
@@ -75,23 +74,25 @@ class RelicRaceAdventure(BaseAdventure):
         ctx = AdventureContext(
             movement=GridMovement(),
             win_condition=RelicCountWin(),
-            time_strategy=TurnBasedTime(MINUTES_PER_TURN),
         )
         ctx.grid_w = GRID_W
         ctx.grid_h = GRID_H
-        ctx.blocked: set[tuple[int, int]] = self._generate_walls()
-        ctx.relics: set[tuple[int, int]] = self._place_relics(
-            ctx.blocked, [p1, p2]
-        )
+        ctx.blocked = self._generate_walls()
+        ctx.relics = set()
         ctx.players = [p1, p2]
         ctx.relics_needed = RELICS_NEEDED
-        ctx.world_time = WorldTime(0, 6, 0)
         self._ctx = ctx
         self._result = None
+        self._last_reward_item = None
+        self._active_player_index = 0
+        self._turn_deadline = time.monotonic() + TURN_SECONDS
+        self._spawn_next_relic()
 
     def handle_input(self, player_index: int, command: str) -> None:
         if self._ctx is None or self._result is not None:
             return
+
+        self._expire_turn_if_needed()
         ctx = self._ctx
 
         direction_commands = {"up", "down", "left", "right"}
@@ -107,23 +108,29 @@ class RelicRaceAdventure(BaseAdventure):
             if player_index not in (0, 1):
                 return
 
+        if player_index != self._active_player_index:
+            return
+
         player = ctx.players[player_index]
         moved = ctx.move_player(player, direction)
         if moved:
             self._try_pick_up_relic(player)
-            ctx.advance_time()
             self._result = ctx.check_winner()
             if self._result is not None:
                 self._record_results()
 
     def update(self) -> None:
-        pass
+        self._expire_turn_if_needed()
 
     def get_state(self) -> dict:
         if self._ctx is None:
             return {}
         ctx = self._ctx
-        local = self._realm.to_local_time(ctx.world_time)
+        self._expire_turn_if_needed()
+        turn_seconds_remaining = max(0.0, self._turn_deadline - time.monotonic())
+        active_player_name = ""
+        if 0 <= self._active_player_index < len(ctx.players):
+            active_player_name = str(ctx.players[self._active_player_index].get("name", ""))
         return {
             "grid_w":   GRID_W,
             "grid_h":   GRID_H,
@@ -131,11 +138,12 @@ class RelicRaceAdventure(BaseAdventure):
             "relics":   set(ctx.relics),
             "players":  [dict(p) for p in ctx.players],
             "result":   self._result,
-            "world_time": str(ctx.world_time),
-            "local_time": str(local),
-            "realm":    self._realm.get_name(),
             "relics_needed": RELICS_NEEDED,
             "adventure_name": self.NAME,
+            "active_player_index": self._active_player_index,
+            "active_player_name": active_player_name,
+            "turn_seconds_remaining": turn_seconds_remaining,
+            "turn_seconds_total": TURN_SECONDS,
         }
 
     def is_complete(self) -> bool:
@@ -166,32 +174,68 @@ class RelicRaceAdventure(BaseAdventure):
         walls.discard((GRID_W - 1, GRID_H - 1))
         return walls
 
-    @staticmethod
-    def _place_relics(blocked: set, players: list) -> set[tuple[int, int]]:
-        occupied = blocked | {(p["x"], p["y"]) for p in players}
+    def _spawn_next_relic(self) -> None:
+        if self._ctx is None:
+            return
+        ctx = self._ctx
+        if ctx.relics:
+            return
+
+        occupied = set(ctx.blocked) | {(p["x"], p["y"]) for p in ctx.players}
         rng = random.Random()
-        relics: set[tuple[int, int]] = set()
         attempts = 0
-        while len(relics) < RELIC_COUNT and attempts < 200:
+        while attempts < 200:
             rx = rng.randint(0, GRID_W - 1)
             ry = rng.randint(0, GRID_H - 1)
             if (rx, ry) not in occupied:
-                relics.add((rx, ry))
+                ctx.relics.add((rx, ry))
+                return
             attempts += 1
-        return relics
+
+    def _expire_turn_if_needed(self) -> None:
+        if self._ctx is None or self._result is not None or not self._ctx.players:
+            return
+        now = time.monotonic()
+        if now < self._turn_deadline:
+            return
+        elapsed_turns = int((now - self._turn_deadline) // TURN_SECONDS) + 1
+        self._active_player_index = (self._active_player_index + elapsed_turns) % len(self._ctx.players)
+        self._turn_deadline += elapsed_turns * TURN_SECONDS
 
     def _record_results(self) -> None:
         if self._ctx is None or self._result is None:
             return
+
         players = self._ctx.players
-        winner_name = players[0]["name"] if players[0]["relics"] >= RELICS_NEEDED else players[1]["name"]
+        winner_player = max(players, key=lambda player: player.get("relics", 0))
+        winner_name = winner_player["name"]
+        winner_profile = self._profile1 if winner_name == self._profile1.username else self._profile2
+
+        reward_item = random.choice(_REWARD_ITEMS)
+        self._last_reward_item = reward_item
+        reward_tx = LootTransaction(LootType.GRANT, reward_item, 1)
+        reward_tx.apply(winner_profile.character)
+
+        winner_character = winner_profile.character
+        winner_character.set_level(winner_character.get_level() + 1)
+
+        self._result = (
+            f"{winner_name} wins by collecting {winner_player.get('relics', 0)} relics! "
+            f"Reward: {reward_item.get_name()} | {winner_name} leveled up to {winner_character.get_level()}."
+        )
+
         for profile in (self._profile1, self._profile2):
             profile.record_result(self.NAME, won=(profile.username == winner_name))
 
     def _try_pick_up_relic(self, player: dict) -> None:
+        if self._ctx is None:
+            return
+
         pos = (player["x"], player["y"])
         if pos in self._ctx.relics:
             self._ctx.relics.discard(pos)
             player["relics"] += 1
             tx = LootTransaction(LootType.GRANT, _RELIC_ITEM, 1)
             tx.apply(player["character"])
+            if player["relics"] < RELICS_NEEDED:
+                self._spawn_next_relic()
