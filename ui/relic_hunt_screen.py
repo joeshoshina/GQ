@@ -72,24 +72,12 @@ class RelicHuntScreen(BaseScreen):
 
     @staticmethod
     def _restore_inventory(profile: "PlayerProfile", inventory: list) -> None:
-        from guild_quest_subsystem.inventory import Item # these are not needed outside of this scope
-        from guild_quest_subsystem.enums import LootType
-        from guild_quest_subsystem.character import LootTransaction
-        inv = profile.character.get_inventory()
-        inv.clear()
-        for entry in inventory:
-            if not isinstance(entry, dict):
-                continue
-            item = Item(
-                entry.get("name", "Unknown"),
-                item_type=entry.get("item_type"),
-                rarity=entry.get("rarity"),
-                description=entry.get("description"),
-            )
-            qty = int(entry.get("quantity", 1))
-            if qty > 0:
-                tx = LootTransaction(LootType.GRANT, item, qty)
-                tx.apply(profile.character)
+        from guild_quest_subsystem.inventory import Inventory
+        restored = Inventory.from_list(inventory)
+        char_inv = profile.character.get_inventory()
+        char_inv.clear()
+        for entry in restored.list_entries():
+            char_inv.add(entry.get_item(), entry.get_quantity())
 
     def _draw_centered(self, y: int, text: str, attr: int = curses.A_NORMAL) -> None:
         max_y, max_x = self.stdscr.getmaxyx()
