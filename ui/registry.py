@@ -35,6 +35,8 @@ class ScreenRegistry:
 
 
 def build_default_registry() -> ScreenRegistry:
+    from .adventure_result_screen import AdventureResultScreen
+    from .relic_hunt_screen import RelicHuntScreen
     from .character_create_screen import CharacterCreateScreen
     from .character_select_screen import CharacterSelectScreen
     from .login_screen import LoginScreen
@@ -67,4 +69,6 @@ def build_default_registry() -> ScreenRegistry:
     registry.register("Settings", lambda stdscr: SettingsScreen(stdscr))
     registry.register("CharacterSelect", lambda stdscr: CharacterSelectScreen(stdscr))
     registry.register("CharacterCreate", lambda stdscr: CharacterCreateScreen(stdscr))
+    registry.register("RelicHunt",       lambda stdscr: RelicHuntScreen(stdscr))
+    registry.register("AdventureResult", lambda stdscr: AdventureResultScreen(stdscr))
     return registry

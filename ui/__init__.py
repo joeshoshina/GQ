@@ -48,6 +48,11 @@ _char_select_mod = importlib.import_module(".character_select_screen", __package
 sys.modules.setdefault("character_select_screen", _char_select_mod)
 _char_create_mod = importlib.import_module(".character_create_screen", __package__)
 sys.modules.setdefault("character_create_screen", _char_create_mod)
+_result_mod      = importlib.import_module(".adventure_result_screen",  __package__)
+sys.modules.setdefault("adventure_result_screen",  _result_mod)
+_relic_mod       = importlib.import_module(".relic_hunt_screen",        __package__)
+sys.modules.setdefault("relic_hunt_screen",        _relic_mod)
+
 
 BaseScreen = _base_mod.BaseScreen
 MenuScreen = _menu_mod.MenuScreen
@@ -57,7 +62,8 @@ RegistrationScreen = _reg_mod.RegistrationScreen
 SettingsScreen = _settings_mod.SettingsScreen
 CharacterSelectScreen = _char_select_mod.CharacterSelectScreen
 CharacterCreateScreen = _char_create_mod.CharacterCreateScreen
-
+AdventureResultScreen  = _result_mod.AdventureResultScreen
+AdventureResultScreen  = _result_mod.AdventureResultScreen
 
 class ScreenManager:
     def __init__(self, registry: Optional[ScreenRegistry] = None) -> None:

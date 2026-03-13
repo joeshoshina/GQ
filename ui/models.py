@@ -53,6 +53,7 @@ class LoginState(ScreenState):
     values: dict = field(default_factory=dict)
     active_field: int = 0
     error: Optional[str] = None
+    title: str = "Login" 
     help_text: str = "Tab/Arrows to move - Enter to submit - Esc to go back"
 
 
@@ -93,6 +94,7 @@ class CharacterSelectState(ScreenState):
     characters: Sequence[Any] = field(default_factory=list)  # List[CharacterRecord]
     selected_index: int = 0
     error: Optional[str] = None
+    subtitle: str = "Choose Your Character"
     help_text: str = "Use Arrows to navigate - Enter to select - Esc to log out"
 
 

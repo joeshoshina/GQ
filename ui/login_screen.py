@@ -50,7 +50,7 @@ class LoginScreen(BaseScreen):
         s = self._state
         top_y = max(1, max_y // 6)
 
-        self._draw_centered(top_y, "Login", curses.A_BOLD)
+        self._draw_centered(top_y, s.title, curses.A_BOLD)
 
         field_top = top_y + 3
         for i, field_name in enumerate(s.fields):

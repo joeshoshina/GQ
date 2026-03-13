@@ -58,7 +58,7 @@ class CharacterSelectScreen(BaseScreen):
         s = self._state
         top_y = max(1, max_y // 6)
 
-        self._draw_centered(top_y, "Choose Your Character", curses.A_BOLD)
+        self._draw_centered(top_y, s.subtitle, curses.A_BOLD)
         self._draw_centered(top_y + 1, f"Welcome, {s.username}", curses.A_DIM)
 
         options = self._build_options()
@@ -147,5 +147,6 @@ class CharacterSelectScreen(BaseScreen):
             characters=s.characters,
             selected_index=selected_index if selected_index is not None else s.selected_index,
             error=error,
+            subtitle=s.subtitle,
             help_text=s.help_text,
         )
