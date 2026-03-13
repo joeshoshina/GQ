@@ -90,12 +90,14 @@ def _adventure_state(p1: dict, p2: dict, session_id: int) -> AdventureState:
         screen_id="RelicHunt",
         adventure_name="Relic Hunt",
         game_state={
-            "player1_name":  p1.get("char_name",  p1["username"]),
-            "player1_class": p1.get("char_class", "Warrior"),
-            "player1_level": p1.get("char_level", 1),
-            "player2_name":  p2.get("char_name",  p2["username"]),
-            "player2_class": p2.get("char_class", "Warrior"),
-            "player2_level": p2.get("char_level", 1),
+            "player1_name":      p1.get("char_name",      p1["username"]),
+            "player1_class":     p1.get("char_class",     "Warrior"),
+            "player1_level":     p1.get("char_level",     1),
+            "player1_inventory": p1.get("char_inventory", []),
+            "player2_name":      p2.get("char_name",      p2["username"]),
+            "player2_class":     p2.get("char_class",     "Warrior"),
+            "player2_level":     p2.get("char_level",     1),
+            "player2_inventory": p2.get("char_inventory", []),
         },
         session_id=session_id,
     )
@@ -137,7 +139,7 @@ def _attempt_login(username_raw: str, password_raw: str):
 
 
 
-def app_flow() -> Generator[ScreenState, ScreenEvent, None]: 
+def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
     phase      = _PHASE_TITLE
     p1: dict   = {}   # {user_id, username, char_name, char_class, char_level}
     p2: dict   = {}
@@ -262,16 +264,28 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
             char_name  = event.payload.get("character_name",  "")
             char_class = event.payload.get("character_class", "Warrior")
             char_level = int(event.payload.get("character_level", 1))
+            char_id    = event.payload.get("character_id", "")
+
+            char_inventory: list = []
+            if char_id:
+                try:
+                    _rec = _char_repo.get_character(char_id)
+                    if _rec is not None:
+                        char_inventory = list(_rec.inventory)
+                except Exception:
+                    pass
 
             if phase == _PHASE_P1_CHAR:
                 p1.update({"char_name": char_name, "char_class": char_class,
-                           "char_level": char_level})
+                           "char_level": char_level, "char_id": char_id,
+                           "char_inventory": char_inventory})
                 phase = _PHASE_P2_LOGIN
                 event = yield _login_state(2)
 
             elif phase == _PHASE_P2_CHAR:
                 p2.update({"char_name": char_name, "char_class": char_class,
-                           "char_level": char_level})
+                           "char_level": char_level, "char_id": char_id,
+                           "char_inventory": char_inventory})
                 phase = _PHASE_ADV_MENU
                 event = yield _adventure_menu_state(p1, p2)
 
@@ -368,6 +382,22 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
         if name == "adventure.complete":
             phase = _PHASE_RESULT
             gs    = event.payload.get("game_state", {})
+
+            winner_state = gs.get("winner_final_state")
+            if winner_state:
+                winner_name  = winner_state.get("username", "")
+                player_dict  = p1 if p1.get("username") == winner_name else p2
+                char_id      = player_dict.get("char_id", "")
+                if char_id:
+                    try:
+                        record = _char_repo.get_character(char_id)
+                        if record is not None:
+                            record.level     = int(winner_state.get("level", record.level))
+                            record.inventory = list(winner_state.get("inventory", record.inventory))
+                            _char_repo.update_character(record)
+                    except Exception:
+                        pass
+
             event = yield _result_state(gs, p1, p2)
             continue
 
@@ -380,6 +410,16 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
         if name == "adventure_result.select":
             opt = event.payload.get("option_id", "")
             if opt == "Play Again":
+                for player_dict in (p1, p2):
+                    cid = player_dict.get("char_id", "")
+                    if cid:
+                        try:
+                            _rec = _char_repo.get_character(cid)
+                            if _rec is not None:
+                                player_dict["char_level"]     = _rec.level
+                                player_dict["char_inventory"] = list(_rec.inventory)
+                        except Exception:
+                            pass
                 session_id += 1
                 phase = _PHASE_PLAYING
                 event = yield _adventure_state(p1, p2, session_id)

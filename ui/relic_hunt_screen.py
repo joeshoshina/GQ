@@ -52,11 +52,15 @@ class RelicHuntScreen(BaseScreen):
             player2_class = str(seed_state.get("player2_class", "Adventurer"))
             player1_level = int(seed_state.get("player1_level", 1))
             player2_level = int(seed_state.get("player2_level", 1))
+            player1_inventory = list(seed_state.get("player1_inventory", []))
+            player2_inventory = list(seed_state.get("player2_inventory", []))
 
             profile1 = PlayerProfile(player1_name, character_class=player1_class)
             profile2 = PlayerProfile(player2_name, character_class=player2_class)
             profile1.character.set_level(player1_level)
             profile2.character.set_level(player2_level)
+            self._restore_inventory(profile1, player1_inventory)
+            self._restore_inventory(profile2, player2_inventory)
 
             self._adventure = RelicRaceAdventure(profile1, profile2)
             self._adventure.reset()
@@ -65,6 +69,27 @@ class RelicHuntScreen(BaseScreen):
                 self._last_game_state = game_state
         elif state.game_state:
             self._last_game_state = dict(state.game_state)
+
+    @staticmethod
+    def _restore_inventory(profile: "PlayerProfile", inventory: list) -> None:
+        from guild_quest_subsystem.inventory import Item # these are not needed outside of this scope
+        from guild_quest_subsystem.enums import LootType
+        from guild_quest_subsystem.character import LootTransaction
+        inv = profile.character.get_inventory()
+        inv.clear()
+        for entry in inventory:
+            if not isinstance(entry, dict):
+                continue
+            item = Item(
+                entry.get("name", "Unknown"),
+                item_type=entry.get("item_type"),
+                rarity=entry.get("rarity"),
+                description=entry.get("description"),
+            )
+            qty = int(entry.get("quantity", 1))
+            if qty > 0:
+                tx = LootTransaction(LootType.GRANT, item, qty)
+                tx.apply(profile.character)
 
     def _draw_centered(self, y: int, text: str, attr: int = curses.A_NORMAL) -> None:
         max_y, max_x = self.stdscr.getmaxyx()

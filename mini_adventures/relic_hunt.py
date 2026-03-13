@@ -131,7 +131,7 @@ class RelicRaceAdventure(BaseAdventure):
         active_player_name = ""
         if 0 <= self._active_player_index < len(ctx.players):
             active_player_name = str(ctx.players[self._active_player_index].get("name", ""))
-        return {
+        state = {
             "grid_w":   GRID_W,
             "grid_h":   GRID_H,
             "blocked":  ctx.blocked,
@@ -144,7 +144,11 @@ class RelicRaceAdventure(BaseAdventure):
             "active_player_name": active_player_name,
             "turn_seconds_remaining": turn_seconds_remaining,
             "turn_seconds_total": TURN_SECONDS,
+            "winner_final_state": None,
         }
+        if self._result is not None:
+            state["winner_final_state"] = self._build_winner_final_state()
+        return state
 
     def is_complete(self) -> bool:
         return self._result is not None
@@ -152,9 +156,34 @@ class RelicRaceAdventure(BaseAdventure):
     def reset(self) -> None:
         self.start()
 
+    def _build_winner_final_state(self) -> dict | None:
+        if self._ctx is None or self._result is None:
+            return None
+        players = self._ctx.players
+        winner_player = max(players, key=lambda p: p.get("relics", 0))
+        winner_name = winner_player["name"]
+        winner_profile = (
+            self._profile1 if winner_name == self._profile1.username else self._profile2
+        )
+        character = winner_profile.character
+        inventory = [
+            {
+                "name":        entry.get_item().get_name(),
+                "item_type":   entry.get_item().item_type,
+                "rarity":      entry.get_item().rarity,
+                "description": entry.get_item().description,
+                "quantity":    entry.get_quantity(),
+            }
+            for entry in character.get_inventory().list_entries()
+        ]
+        return {
+            "username":  winner_name,
+            "level":     character.get_level(),
+            "inventory": inventory,
+        }
+
     @staticmethod
     def _make_player(profile, x: int, y: int) -> dict:
-        profile.character.get_inventory().clear()
         return {
             "name":      profile.username,
             "character": profile.character,
