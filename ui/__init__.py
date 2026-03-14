@@ -52,6 +52,8 @@ _result_mod      = importlib.import_module(".adventure_result_screen",  __packag
 sys.modules.setdefault("adventure_result_screen",  _result_mod)
 _relic_mod       = importlib.import_module(".relic_hunt_screen",        __package__)
 sys.modules.setdefault("relic_hunt_screen",        _relic_mod)
+_battle_duel_mod = importlib.import_module(".battle_duel_screen", __package__)
+sys.modules.setdefault("battle_duel_screen", _battle_duel_mod)
 
 
 BaseScreen = _base_mod.BaseScreen

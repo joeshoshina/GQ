@@ -18,6 +18,7 @@ import time
 from .base_adventure import BaseAdventure
 from .context import AdventureContext
 from .strategies.movement import GridMovement
+from guild_quest_subsystem.inventory import Inventory
 from .strategies.win_condition import RelicCountWin
 from guild_quest_subsystem.enums import LootType
 from guild_quest_subsystem.character import LootTransaction
@@ -166,20 +167,10 @@ class RelicRaceAdventure(BaseAdventure):
             self._profile1 if winner_name == self._profile1.username else self._profile2
         )
         character = winner_profile.character
-        inventory = [
-            {
-                "name":        entry.get_item().get_name(),
-                "item_type":   entry.get_item().item_type,
-                "rarity":      entry.get_item().rarity,
-                "description": entry.get_item().description,
-                "quantity":    entry.get_quantity(),
-            }
-            for entry in character.get_inventory().list_entries()
-        ]
         return {
             "username":  winner_name,
             "level":     character.get_level(),
-            "inventory": inventory,
+            "inventory": character.get_inventory().to_list(),
         }
 
     @staticmethod

@@ -28,3 +28,14 @@ class RelicCountWin(WinConditionStrategy):
             if p["relics"] >= context.relics_needed:
                 return f"{p['name']} wins by collecting {p['relics']} relics!"
         return None
+
+
+class LastStandingWin(WinConditionStrategy):
+    def check_winner(self, context) -> str | None:
+        for p in context.players:
+            if p.get("hp", 1) <= 0:
+                survivors = [x for x in context.players if x.get("hp", 1) > 0]
+                if survivors:
+                    return f"{survivors[0]['name']} wins the duel!"
+                return "Draw!"
+        return None

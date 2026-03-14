@@ -78,9 +78,9 @@ def _adventure_menu_state(p1: dict, p2: dict) -> MenuState:
         title="Choose Adventure",
         subtitle=f"{p1['username']} (P1)  vs  {p2['username']} (P2)",
         options=[
-            MenuOption(id="Relic Hunt",     label="Relic Hunt"),
-            MenuOption(id="Escort Mission", label="Escort Mission", enabled=False),
-            MenuOption(id="Back",           label="Back to Main Menu"),
+            MenuOption(id="Relic Hunt",   label="Relic Hunt"),
+            MenuOption(id="Battle Duel",  label="Battle Duel"),
+            MenuOption(id="Back",         label="Back to Main Menu"),
         ],
     )
 
@@ -89,6 +89,24 @@ def _adventure_state(p1: dict, p2: dict, session_id: int) -> AdventureState:
     return AdventureState(
         screen_id="RelicHunt",
         adventure_name="Relic Hunt",
+        game_state={
+            "player1_name":      p1.get("char_name",      p1["username"]),
+            "player1_class":     p1.get("char_class",     "Warrior"),
+            "player1_level":     p1.get("char_level",     1),
+            "player1_inventory": p1.get("char_inventory", []),
+            "player2_name":      p2.get("char_name",      p2["username"]),
+            "player2_class":     p2.get("char_class",     "Warrior"),
+            "player2_level":     p2.get("char_level",     1),
+            "player2_inventory": p2.get("char_inventory", []),
+        },
+        session_id=session_id,
+    )
+
+
+def _battle_duel_state(p1: dict, p2: dict, session_id: int) -> AdventureState:
+    return AdventureState(
+        screen_id="BattleDuel",
+        adventure_name="Battle Duel",
         game_state={
             "player1_name":      p1.get("char_name",      p1["username"]),
             "player1_class":     p1.get("char_class",     "Warrior"),
@@ -121,6 +139,25 @@ def _result_state(game_state: dict, p1: dict, p2: dict) -> AdventureResultState:
     )
 
 
+def _battle_duel_result_state(game_state: dict, p1: dict, p2: dict) -> AdventureResultState:
+    result_text = str(game_state.get("result", "Duel Complete!"))
+
+    players = list(game_state.get("players", []))
+    stats_lines = []
+    for i, pl in enumerate(players):
+        pname  = pl.get("name",   f"Player {i + 1}")
+        hp     = pl.get("hp",     0)
+        max_hp = pl.get("max_hp", 1)
+        stats_lines.append(f"P{i + 1}  {pname}:  {hp}/{max_hp} HP remaining")
+
+    return AdventureResultState(
+        screen_id="AdventureResult",
+        adventure_name="Battle Duel",
+        result_text=result_text,
+        stats_lines=tuple(stats_lines),
+    )
+
+
 def _attempt_login(username_raw: str, password_raw: str):
     """Returns (record_dict, error_string). record_dict is None on failure."""
     try:
@@ -140,10 +177,11 @@ def _attempt_login(username_raw: str, password_raw: str):
 
 
 def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
-    phase      = _PHASE_TITLE
-    p1: dict   = {}   # {user_id, username, char_name, char_class, char_level}
-    p2: dict   = {}
-    session_id = 0
+    phase        = _PHASE_TITLE
+    p1: dict     = {}   # {user_id, username, char_name, char_class, char_level}
+    p2: dict     = {}
+    session_id   = 0
+    _active_adv  = "Relic Hunt"   # tracks which adventure is currently playing
 
     event = yield _TITLE_STATE
 
@@ -354,9 +392,17 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
                 continue
 
             if opt == "Relic Hunt" and phase == _PHASE_ADV_MENU:
+                _active_adv = "Relic Hunt"
                 session_id += 1
                 phase  = _PHASE_PLAYING
                 event  = yield _adventure_state(p1, p2, session_id)
+                continue
+
+            if opt == "Battle Duel" and phase == _PHASE_ADV_MENU:
+                _active_adv = "Battle Duel"
+                session_id += 1
+                phase  = _PHASE_PLAYING
+                event  = yield _battle_duel_state(p1, p2, session_id)
                 continue
 
             if opt == "Back" and phase == _PHASE_ADV_MENU:
@@ -370,10 +416,12 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
             continue
 
         if name == "adventure.update":
-            gs    = event.payload.get("game_state", {})
+            gs          = event.payload.get("game_state", {})
+            screen_id   = event.payload.get("screen_id",   "RelicHunt")
+            adv_name    = event.payload.get("adventure_name", _active_adv)
             event = yield AdventureState(
-                screen_id="RelicHunt",
-                adventure_name="Relic Hunt",
+                screen_id=screen_id,
+                adventure_name=adv_name,
                 game_state=gs,
                 session_id=session_id,
             )
@@ -398,7 +446,10 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
                     except Exception:
                         pass
 
-            event = yield _result_state(gs, p1, p2)
+            if _active_adv == "Battle Duel":
+                event = yield _battle_duel_result_state(gs, p1, p2)
+            else:
+                event = yield _result_state(gs, p1, p2)
             continue
 
         if name == "adventure.exit":
@@ -422,7 +473,10 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
                             pass
                 session_id += 1
                 phase = _PHASE_PLAYING
-                event = yield _adventure_state(p1, p2, session_id)
+                if _active_adv == "Battle Duel":
+                    event = yield _battle_duel_state(p1, p2, session_id)
+                else:
+                    event = yield _adventure_state(p1, p2, session_id)
             else:
                 phase = _PHASE_TITLE
                 p1.clear()

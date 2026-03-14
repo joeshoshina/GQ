@@ -70,5 +70,7 @@ def build_default_registry() -> ScreenRegistry:
     registry.register("CharacterSelect", lambda stdscr: CharacterSelectScreen(stdscr))
     registry.register("CharacterCreate", lambda stdscr: CharacterCreateScreen(stdscr))
     registry.register("RelicHunt",       lambda stdscr: RelicHuntScreen(stdscr))
+    from .battle_duel_screen import BattleDuelScreen
+    registry.register("BattleDuel",      lambda stdscr: BattleDuelScreen(stdscr))
     registry.register("AdventureResult", lambda stdscr: AdventureResultScreen(stdscr))
     return registry
