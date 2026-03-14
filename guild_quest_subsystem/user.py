@@ -75,43 +75,6 @@ class Password:
         return hash(self._value)
 
 
-class Score:
-    def __init__(self, value: int):
-        self.value = value
-
-    @property
-    def value(self) -> int:
-        return self._value
-
-    @value.setter
-    def value(self, v: int) -> None:
-        if not isinstance(v, int) or isinstance(v, bool):
-            raise TypeError("score must be an int")
-        if v < 0:
-            raise ValueError("score must be non-negative")
-        self._value = v
-
-    def __int__(self) -> int:
-        return self._value
-
-    def __index__(self) -> int:
-        return self._value
-
-    def __str__(self) -> str:
-        return str(self._value)
-
-    def __repr__(self) -> str:
-        return f"Score({self._value!r})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, Score):
-            return self._value == other._value
-        if isinstance(other, int) and not isinstance(other, bool):
-            return self._value == other
-        return NotImplemented
-
-    def __hash__(self) -> int:
-        return hash(self._value)
 
 
 class User:
@@ -119,7 +82,6 @@ class User:
         self,
         user_id: str,
         username: Optional[Username] = None,
-        score: Optional[Score] = None,
     ) -> None:
         if not isinstance(user_id, str) or isinstance(user_id, bool):
             raise TypeError("user_id must be a UUID string")
@@ -132,22 +94,7 @@ class User:
             raise ValueError("user_id must be a valid UUID string")
         self.user_id: str = user_id
         self.username: Optional[Username] = username
-        self.score: Score = score if score is not None else Score(0)
         self.characters: List[Any] = []
-
-    def add_score(self, amount: int) -> None:
-        if not isinstance(amount, int) or isinstance(amount, bool):
-            raise TypeError("amount must be an int")
-        if amount < 0:
-            raise ValueError("amount must be non-negative")
-        self.score = Score(self.score.value + amount)
-
-    def display_score(self) -> str:
-        try:
-            from settings import Settings
-            return Settings.get_instance().format_score(self.score.value)
-        except Exception:
-            return str(self.score)
 
     def add_character(self, char: Any) -> None:
         self.characters.append(char)
@@ -162,7 +109,6 @@ class User:
         return {
             "user_id": self.user_id,
             "username": str(self.username) if self.username else None,
-            "score": self.score.value,
             "characters": list(self.characters),
         }
 
@@ -171,10 +117,9 @@ class User:
         uid = data.get("id")
         username_val = data.get("username")
         username = Username(username_val) if username_val is not None else None
-        score = Score(data["score"]) if "score" in data else Score(0)
-        u = cls(user_id=uid, username=username, score=score)
+        u = cls(user_id=uid, username=username)
         u.characters = list(data.get("characters", []))
         return u
 
     def __repr__(self) -> str:
-        return f"User(user_id={self.user_id!r}, username={self.username!r}, score={self.score!r}, characters={len(self.characters)})"
+        return f"User(user_id={self.user_id!r}, username={self.username!r}, characters={len(self.characters)})"

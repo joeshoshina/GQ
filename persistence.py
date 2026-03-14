@@ -122,7 +122,6 @@ class UserRepository:
                 "username": username.value,
                 "password_hash": password_hash,
                 "salt": salt.hex(),
-                "score": 0,
             }
             users.append(record)
             self._atomic_write(users)

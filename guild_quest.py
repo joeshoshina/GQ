@@ -21,7 +21,7 @@ from character_repository import (
     get_default_character_repository,
     CharacterAlreadyExists,
 )
-from guild_quest_subsystem.user import Username, Password, User, Score
+from guild_quest_subsystem.user import Username, Password, User
 from guild_quest_subsystem.enums import CharacterClass
 
 _BASE_DIR = os.path.dirname(__file__)
@@ -59,13 +59,7 @@ def _compute_score(user_id: str) -> int:
         return 0
 
 
-def _update_score(user_id: str) -> None:
-    """Recompute and persist the score for user_id."""
-    try:
-        score = _compute_score(user_id)
-        _repo.update_score(user_id, score)
-    except Exception:
-        pass
+
 
 
 def _login_state(player_num: int, error: str = "", values: dict = None) -> LoginState:
@@ -465,11 +459,7 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
                     except Exception:
                         pass
 
-            # Recompute and persist scores for both players after every game
-            for _pd in (p1, p2):
-                _uid = _pd.get("user_id", "")
-                if _uid:
-                    _update_score(_uid)
+
 
             if _active_adv == "Battle Duel":
                 event = yield _battle_duel_result_state(gs, p1, p2)
