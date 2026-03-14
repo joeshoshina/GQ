@@ -3,6 +3,7 @@ from typing import Optional
 
 from .base_screen import BaseScreen
 from .models import CharacterSelectState, ScreenEvent
+from settings import Settings
 
 
 class CharacterSelectScreen(BaseScreen):
@@ -61,6 +62,13 @@ class CharacterSelectScreen(BaseScreen):
         self._draw_centered(top_y, s.subtitle, curses.A_BOLD)
         self._draw_centered(top_y + 1, f"Welcome, {s.username}", curses.A_DIM)
 
+        try:
+            formatted_score = Settings.get_instance().format_score(s.score)
+        except Exception:
+            formatted_score = str(s.score)
+        score_attr = curses.color_pair(4) if curses.has_colors() else curses.A_NORMAL
+        self._draw_centered(top_y + 2, f"Score: {formatted_score}", score_attr)
+
         options = self._build_options()
         if not options:
             self._draw_centered(max_y // 2, "No options available.", curses.A_DIM)
@@ -68,7 +76,7 @@ class CharacterSelectScreen(BaseScreen):
             return
 
         idx = max(0, min(s.selected_index, len(options) - 1))
-        menu_top = max(top_y + 3, max_y // 2 - len(options))
+        menu_top = max(top_y + 5, max_y // 2 - len(options))
 
         for i, (label, is_new) in enumerate(options):
             y = menu_top + i * 2
@@ -149,4 +157,5 @@ class CharacterSelectScreen(BaseScreen):
             error=error,
             subtitle=s.subtitle,
             help_text=s.help_text,
+            score=s.score,
         )

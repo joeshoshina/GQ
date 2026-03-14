@@ -96,6 +96,7 @@ class CharacterSelectState(ScreenState):
     error: Optional[str] = None
     subtitle: str = "Choose Your Character"
     help_text: str = "Use Arrows to navigate - Enter to select - Esc to log out"
+    score: int = 0
 
 
 @dataclass

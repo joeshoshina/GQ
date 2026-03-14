@@ -50,6 +50,24 @@ _TITLE_STATE = MenuState(
     ],
 )
 
+def _compute_score(user_id: str) -> int:
+    """Return sum of all character levels for user_id multiplied by 100."""
+    try:
+        chars = _char_repo.get_characters_for_user(user_id)
+        return sum(c.level for c in chars) * 100
+    except Exception:
+        return 0
+
+
+def _update_score(user_id: str) -> None:
+    """Recompute and persist the score for user_id."""
+    try:
+        score = _compute_score(user_id)
+        _repo.update_score(user_id, score)
+    except Exception:
+        pass
+
+
 def _login_state(player_num: int, error: str = "", values: dict = None) -> LoginState:
     return LoginState(
         screen_id="Login",
@@ -69,6 +87,7 @@ def _char_select_state(
         characters=chars,
         subtitle=f"Player {player_num}  ·  Choose Your Character",
         help_text="Use Arrows to navigate - Enter to select - Esc to go back",
+        score=_compute_score(user_id),
     )
 
 
@@ -445,6 +464,12 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
                             _char_repo.update_character(record)
                     except Exception:
                         pass
+
+            # Recompute and persist scores for both players after every game
+            for _pd in (p1, p2):
+                _uid = _pd.get("user_id", "")
+                if _uid:
+                    _update_score(_uid)
 
             if _active_adv == "Battle Duel":
                 event = yield _battle_duel_result_state(gs, p1, p2)
