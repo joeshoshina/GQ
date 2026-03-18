@@ -447,7 +447,8 @@ def app_flow() -> Generator[ScreenState, ScreenEvent, None]:
             winner_state = gs.get("winner_final_state")
             if winner_state:
                 winner_name  = winner_state.get("username", "")
-                player_dict  = p1 if p1.get("username") == winner_name else p2
+                p1_name = p1.get("char_name") or p1.get("username", "")
+                player_dict  = p1 if p1_name == winner_name else p2
                 char_id      = player_dict.get("char_id", "")
                 if char_id:
                     try:
