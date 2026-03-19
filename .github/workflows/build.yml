@@ -1,0 +1,49 @@
+name: Build Executables
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build executable
+        run: |
+          pyinstaller --onefile guild_quest.py
+
+      - name: Rename output (OS-specific)
+        run: |
+          mkdir output
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            move dist\guild_quest.exe output\guild_quest-windows.exe
+          elif [ "$RUNNER_OS" == "Linux" ]; then
+            mv dist/guild_quest output/guild_quest-linux
+          else
+            mv dist/guild_quest output/guild_quest-macos
+          fi
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}
+          path: output/*
