@@ -2,6 +2,7 @@
 Recommended to use Python 3.10
 
 **Linux/Mac**: Clone the repository and run `python guild_quest.py` no other dependencies needed
+
 **Windows**: You will need to install the `windows-curses` wrapper (only supported on Python 3.13 and below)
 - `pip install windows-curses`
 - Then `python guild_quest.py`
